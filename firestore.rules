@@ -80,7 +80,10 @@ service cloud.firestore {
              data.title is string && data.title.size() <= 300 &&
              (!('folderId' in data) || (data.folderId is string || data.folderId == null)) &&
              (!('sections' in data) || (data.sections is list && data.sections.size() <= 500)) &&
-             (!('sectionsArray' in data) || (data.sectionsArray is list && data.sectionsArray.size() <= 500));
+             (!('sectionsArray' in data) || (data.sectionsArray is list && data.sectionsArray.size() <= 500)) &&
+             // The whole document is capped by Firestore at 1 MiB; rejects
+             // padded/oversized unknown fields smuggled onto a note.
+             data.keys().hasOnly(['id', 'folderId', 'title', 'sections', 'sectionsArray', 'createdAt', 'updatedAt', 'deletedAt', 'isLocalOnly', 'isImported']);
     }
 
     // ===============================================================
@@ -112,7 +115,17 @@ service cloud.firestore {
 
       match /media/{mediaId} {
         allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId);
+        // Chunked Blob backup (see saveVaultMediaToFirestore). Every field is
+        // validated and size-capped; arbitrary documents are not accepted.
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['id', 'dataUrl', 'type', 'size', 'filename', 'chunkCount', 'parentId', 'partIndex', 'data', 'updatedAt'])
+          && request.resource.data.id == mediaId
+          && (!('type' in request.resource.data) || request.resource.data.type.matches('image/.*'))
+          && (!('size' in request.resource.data) || (request.resource.data.size is number && request.resource.data.size >= 0 && request.resource.data.size <= 25 * 1024 * 1024))
+          && (!('chunkCount' in request.resource.data) || (request.resource.data.chunkCount is number && request.resource.data.chunkCount >= 1 && request.resource.data.chunkCount <= 100))
+          && (!('dataUrl' in request.resource.data) || (request.resource.data.dataUrl is string && request.resource.data.dataUrl.size() <= 800 * 1024))
+          && (!('data' in request.resource.data) || (request.resource.data.data is string && request.resource.data.data.size() <= 800 * 1024))
+          && (!('filename' in request.resource.data) || (request.resource.data.filename is string && request.resource.data.filename.size() <= 300));
         allow delete: if isOwner(userId);
       }
     }

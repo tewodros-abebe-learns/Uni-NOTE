@@ -8,7 +8,6 @@ import { canMoveFolder, collectFolderIds } from './lib/folderGraph';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, Auth } from 'firebase/auth';
 import { runTransaction, getFirestore, initializeFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, where, getDocs, onSnapshot, Firestore } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, FirebaseStorage } from 'firebase/storage';
 import { getLocalMediaBlob, registerLocalBlob, sanitizeContentImages, blobToDataUrl, dataUrlToBlob, setCloudMediaFetcher } from './utils/mediaStore';
 import { loadGuestFolders, saveGuestFolders, loadGuestNotes, saveGuestNotes } from './demoData';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -16,7 +15,6 @@ import firebaseConfig from '../firebase-applet-config.json';
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
-let storageInstance: FirebaseStorage | null = null;
 let googleProviderInstance: GoogleAuthProvider | null = null;
 
 export const getFirebaseApp = () => {
@@ -52,12 +50,6 @@ export const getFirebaseDb = () => {
   return dbInstance;
 };
 
-export const getFirebaseStorage = () => {
-  if (!storageInstance) {
-    storageInstance = getStorage(getFirebaseApp());
-  }
-  return storageInstance;
-};
 
 export const getGoogleProvider = () => {
   if (!googleProviderInstance) {
@@ -126,13 +118,14 @@ export const logout = async () => {
 };
 
 export const registerUserDoc = async (userId: string, email: string, displayName?: string, photoURL?: string): Promise<boolean> => {
+  if (!email) { console.warn('registerUserDoc skipped: signed-in user has no email.'); return false; }
   try {
     const userDocRef = doc(getFirebaseDb(), 'users', userId);
     const existing = await withTimeout(getDoc(userDocRef), 4000, 'getUserDoc');
     if (!existing.exists()) {
       await withTimeout(setDoc(userDocRef, {
         uid: userId,
-        email: email || `${userId}@example.com`,
+        email,
         displayName: displayName || 'User',
         photoURL: photoURL || null
       }), 4000, 'createUserDoc');
@@ -140,8 +133,8 @@ export const registerUserDoc = async (userId: string, email: string, displayName
     }
     return true; // Already registered
   } catch (err) {
-    console.warn("registerUserDoc warning:", err);
-    return true;
+    console.warn('registerUserDoc failed:', err instanceof Error ? err.message : err);
+    return false; // Report failure honestly; never pretend registration worked.
   }
 };
 
@@ -175,54 +168,23 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const auth = getFirebaseAuth();
+  // Deliberately excludes email / display name / provider data: console logs
+  // are routinely pasted into bug reports and must not carry PII.
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
+      userId: getFirebaseAuth().currentUser?.uid,
+      isAnonymous: getFirebaseAuth().currentUser?.isAnonymous,
+      providerInfo: (getFirebaseAuth().currentUser?.providerData || []).map(provider => ({
+        providerId: provider.providerId, displayName: null, email: null, photoUrl: null,
+      })),
     },
     operationType,
-    path
+    path,
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-
-/**
- * Guarantees data is written without loss.
- */
-export const secureSave = async (data: any, collectionName: string, docId: string) => {
-  const path = `${collectionName}/${docId}`;
-  try {
-    await setDoc(doc(getFirebaseDb(), collectionName, docId), data, { merge: true });
-    // Successfully saved to ${path}
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
-  }
-};
-
-/**
- * Ensures when an item is deleted, it is permanently destroyed from Firestore.
- */
-export const secureDelete = async (docId: string, collectionName: string) => {
-  const path = `${collectionName}/${docId}`;
-  try {
-    await deleteDoc(doc(getFirebaseDb(), collectionName, docId));
-    // Successfully deleted from ${path}
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, path);
-  }
-};
 
 // Folder Logic
 export interface Folder {
@@ -238,21 +200,6 @@ export interface Folder {
 // Helper to safely extract milliseconds from any Firestore timestamp or number
 export const getTimestampMs = timestampMs;
 
-export const getFolders = async (userId: string, parentId: string | null = null): Promise<Folder[]> => {
-  const path = `users/${userId}/folders`;
-  try {
-    const q = query(
-      collection(getFirebaseDb(), path),
-      where('parentId', '==', parentId)
-    );
-    const snapshot = await getDocs(q);
-    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Folder[];
-    return list.sort((a, b) => getTimestampMs(a.createdAt) - getTimestampMs(b.createdAt));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
-    return [];
-  }
-};
 
 export const getAllFolders = async (userId: string): Promise<Folder[]> => {
   try {
@@ -498,13 +445,10 @@ const accountSync = createAccountSync({
     if (kind === 'notes' && !data.deletedAt) {
       data.sections = await Promise.all((data as Note).sections.map(async section => ({
         ...section,
-        content: await promoteMediaContent(await sanitizeContentImages(section.content), async id => {
-          try {
-            return await uploadVaultImage(uid, id);
-          } catch {
-            return id;
-          }
-        })
+        // No catch: if an image cannot be backed up to the cloud, the whole
+        // note commit fails and stays in the outbox for retry, rather than
+        // publishing a note whose image exists only in this browser.
+        content: await promoteMediaContent(await sanitizeContentImages(section.content), id => uploadVaultImage(uid, id))
       })));
     }
     return data;
@@ -528,22 +472,67 @@ const accountSync = createAccountSync({
 const stageWrite = accountSync.stage;
 const commitStaged = accountSync.commit;
 const mergeWithOutbox = accountSync.merge;
-export const retryAccountSync = (uid: string): Promise<void> => withTimeout(accountSync.retry(uid), 20000, 'Retry cloud sync');
+export const retryAccountSync = (uid: string): Promise<void> => withTimeout((async () => { await retryMediaUploads(uid); await accountSync.retry(uid); })(), 60000, 'Retry cloud sync');
 const enqueueImageUpload = createWriteQueue();
+// Upload-once receipts + a durable media outbox. An image is uploaded to the
+// cloud exactly once per account; later note saves reuse the receipt instead
+// of re-uploading every image on every keystroke-save.
+const mediaReceiptsKey = (uid: string) => `uninote_media_receipts_${uid}`;
+const mediaOutboxKey = (uid: string) => `uninote_media_outbox_${uid}`;
+const readMediaMap = (key: string): Record<string, string> => { try { return JSON.parse(readLocalValue(key) || '{}'); } catch { return {}; } };
+const readMediaOutbox = (uid: string): string[] => { try { const v = JSON.parse(readLocalValue(mediaOutboxKey(uid)) || '[]'); return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []; } catch { return []; } };
+const stageMedia = (uid: string, id: string) => { const box = readMediaOutbox(uid); if (!box.includes(id)) writeLocalValue(mediaOutboxKey(uid), JSON.stringify([...box, id])); };
+const settleMedia = (uid: string, id: string) => writeLocalValue(mediaOutboxKey(uid), JSON.stringify(readMediaOutbox(uid).filter(x => x !== id)));
+export const pendingMediaUploads = (uid: string): string[] => readMediaOutbox(uid);
+
 function uploadVaultImage(uid: string, id: string): Promise<string> {
+  // NOTE: This project's Firebase Storage is unavailable (AI Studio Starter
+  // Tier blocks Storage entirely), so the durable cloud copy of an image is
+  // its chunked Firestore media document. The other devices of this account
+  // resolve `media_*` references through the media fetcher below. There is no
+  // Storage URL to promote to, and none is required for persistence.
+  const receipt = readMediaMap(mediaReceiptsKey(uid))[id];
+  if (receipt) return Promise.resolve(id);
   return enqueueImageUpload(`${uid}/${id}`, async () => {
     assertOwner(uid);
-    // Ensure image is backed up to Firestore media collection
+    if (readMediaMap(mediaReceiptsKey(uid))[id]) return id;
     const blob = await getLocalMediaBlob(id);
-    if (blob) {
-      try {
-        await saveVaultMediaToFirestore(uid, id, blob);
-      } catch (dbErr) {
-        console.warn('Firestore media upload warning for', id, dbErr);
-      }
+    if (!blob) throw new Error(`Image ${id} is missing from this browser, so it cannot be synced. Re-insert it before relying on cloud sync.`);
+    stageMedia(uid, id);
+    try {
+      await saveVaultMediaToFirestore(uid, id, blob);
+    } catch (error) {
+      console.warn('Cloud media backup failed for', id, error);
+      throw error instanceof Error ? error : new Error(`Image ${id} could not be backed up to the cloud. It remains staged for retry.`);
     }
+    writeLocalValue(mediaReceiptsKey(uid), JSON.stringify({ ...readMediaMap(mediaReceiptsKey(uid)), [id]: 'firestore' }));
+    settleMedia(uid, id);
     return id;
   });
+}
+
+/** Retry every staged media upload, then replay pending note writes. */
+export async function retryMediaUploads(uid: string): Promise<void> {
+  for (const id of readMediaOutbox(uid)) {
+    try { await uploadVaultImage(uid, id); } catch { /* Still staged; accountSync.retry below re-prepares notes too. */ }
+  }
+}
+
+/**
+ * Media health for a set of notes: every local media reference must resolve
+ * from this browser or from the cloud backup. Missing items are reported to
+ * the user (repair pass) instead of rendering as silent placeholders.
+ */
+export async function checkMediaHealth(uid: string, notes: Note[]): Promise<{ ready: number; missing: string[]; pending: string[] }> {
+  const ids = [...new Set(notes.flatMap(note => note.sections.flatMap(section => getMediaReferences(section.content))))];
+  const missing: string[] = [];
+  for (const id of ids) {
+    if (await getLocalMediaBlob(id)) continue;
+    if (readMediaMap(mediaReceiptsKey(uid))[id]) continue;
+    const cloud = await fetchVaultMediaFromFirestore(uid, id).catch(() => null);
+    if (!cloud) missing.push(id);
+  }
+  return { ready: ids.length - missing.length, missing, pending: readMediaOutbox(uid) };
 }
 export const observeAuth = (callback: (user: User | null) => void, error: (error: Error) => void) => onAuthStateChanged(getFirebaseAuth(), callback, error);
 

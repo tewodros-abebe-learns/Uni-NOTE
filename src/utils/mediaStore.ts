@@ -179,6 +179,10 @@ async function loadObjectUrl(id: string): Promise<string> {
 
 export function resolveLocalImage(url: string): string {
   if (!url) return '';
+  // Remote and already-materialised URLs are authoritative as-is. Extracting a
+  // media_ filename out of a Storage/HTTPS URL and blanking `src` while a
+  // local copy loads was the cause of permanent placeholders after re-login.
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
   if (resolved.has(url)) return resolved.get(url)!;
 
   // Extract media ID if url is or contains a media_* reference
@@ -279,6 +283,15 @@ export async function compressImageFile(file: File | Blob, maxWidth = 1920, maxH
 
 export async function hydrateMedia(content: string): Promise<void> {
   await Promise.all(getMediaReferences(content).map(loadObjectUrl));
+}
+
+/** Which media references can actually be shown right now (local vault only). */
+export async function localMediaStatus(content: string): Promise<{ ready: string[]; missing: string[] }> {
+  const ready: string[] = []; const missing: string[] = [];
+  for (const id of getMediaReferences(content)) {
+    (await getLocalMediaBlob(id) ? ready : missing).push(id);
+  }
+  return { ready, missing };
 }
 
 /** Replace embedded base64 only after its Blob transaction has committed. */

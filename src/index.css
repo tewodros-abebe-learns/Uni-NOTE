@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+/* Google Sans (Product Sans metrics) — bundled locally so it works offline
+   and in the PWA precache. Google Sans is not served by Google Fonts. */
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/ProductSans-Light.woff2') format('woff2');
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/ProductSans-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/ProductSans-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/ProductSans-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
 @theme inline {
   --color-bg: var(--bg-main);
   --color-main: var(--bg-main);
@@ -12,176 +35,65 @@
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
   --color-accent-blue: var(--accent-blue);
-  --font-sans: var(--font-gemini);
+  --font-sans: 'Google Sans', 'Google Sans Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
-/* Minimalist Bold Hero Font */
+:root {
+  --font-gemini: 'Google Sans', 'Google Sans Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius-pill: 28px;
+  --radius-card: 20px;
+}
+
+/* Light — clean bright workspace */
+[data-theme="light"] {
+  color-scheme: light;
+  --on-accent: #ffffff;
+  --bg-main: #f8f9fa;
+  --bg-surface: #ffffff;
+  --bg-hover: #eef1f4;
+  --text-main: #1f1f1f;
+  --text-muted: #444746;
+  --text-dim: #5f6368;
+  --border-subtle: #dadce0;
+  --accent-blue: #1a73e8;
+  --accent: #1a73e8;
+  --accent-glow: rgba(26, 115, 232, 0.18);
+}
+
+/* Dark — soft dark grey (default) */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --on-accent: #07111b;
+  --bg-main: #131314;
+  --bg-surface: #1e1f20;
+  --bg-hover: #28292a;
+  --text-main: #e3e3e3;
+  --text-muted: #c4c7c5;
+  --text-dim: #9aa0a6;
+  --border-subtle: #3c4043;
+  --accent-blue: #8ab4f8;
+  --accent: #8ab4f8;
+  --accent-glow: rgba(138, 180, 248, 0.28);
+}
+
+/* Full Dark — true black for OLED */
+[data-theme="black"] {
+  color-scheme: dark;
+  --on-accent: #000000;
+  --bg-main: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-hover: #171717;
+  --text-main: #f2f2f2;
+  --text-muted: #c9c9c9;
+  --text-dim: #9e9e9e;
+  --border-subtle: #262626;
+  --accent-blue: #8ab4f8;
+  --accent: #8ab4f8;
+  --accent-glow: rgba(138, 180, 248, 0.35);
+}
+
 .font-hero {
-  font-family: 'Google Sans', 'Space Grotesk', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
-}
-
-/* Gemini Global Variables */
-/* Themes: Midnight, Sunset, Forest, Royal, Paper and original themes: Obsidian, Sepia, Nord, Alabaster */
-:root, [data-theme="royal"] {
-  --on-accent: #07111b;
-  color-scheme: dark;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --bg-main: #171126;
-  --bg-surface: #211932;
-  --bg-hover: #302344;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --accent-blue: #c4b5fd;
-  --accent: #c4b5fd;
-  --accent-glow: rgba(168, 199, 250, 0.3);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="midnight"] {
-  --on-accent: #07111b;
-  color-scheme: dark;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --bg-main: #070b16;
-  --bg-surface: #0f172a;
-  --bg-hover: #1e293b;
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --border-subtle: #1e293b;
-  --accent-blue: #38bdf8;
-  --accent: #38bdf8;
-  --accent-glow: rgba(56, 189, 248, 0.35);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="sunset"] {
-  --on-accent: #ffffff;
-  color-scheme: light;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Merriweather', serif;
-  --bg-main: #fbf0d9;
-  --bg-surface: #f3e5c8;
-  --bg-hover: #ebd9b5;
-  --text-main: #342416;
-  --text-muted: #6b533d;
-  --text-dim: #927558;
-  --border-subtle: #dec8a0;
-  --accent-blue: #b45309;
-  --accent: #b45309;
-  --accent-glow: rgba(180, 83, 9, 0.25);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="forest"] {
-  --on-accent: #07111b;
-  color-scheme: dark;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --bg-main: #10251e;
-  --bg-surface: #18382c;
-  --bg-hover: #23503e;
-  --text-main: #eceff4;
-  --text-muted: #d8dee9;
-  --text-dim: #6ee7b7;
-  --border-subtle: #2e5c49;
-  --accent-blue: #6ee7b7;
-  --accent: #6ee7b7;
-  --accent-glow: rgba(136, 192, 208, 0.35);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="paper"] {
-  --on-accent: #ffffff;
-  color-scheme: light;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --bg-main: #fafafa;
-  --bg-surface: #ffffff;
-  --bg-hover: #f4f4f6;
-  --text-main: #18181b;
-  --text-muted: #52525b;
-  --text-dim: #71717a;
-  --border-subtle: #e4e4e7;
-  --accent-blue: #2563eb;
-  --accent: #18181b;
-  --accent-glow: rgba(24, 24, 27, 0.12);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="obsidian"] {
-  --on-accent: #07111b;
-  color-scheme: dark;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --bg-main: #171126;
-  --bg-surface: #211932;
-  --bg-hover: #302344;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --accent-blue: #c4b5fd;
-  --accent: #c4b5fd;
-  --accent-glow: rgba(168, 199, 250, 0.3);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="sepia"] {
-  --on-accent: #ffffff;
-  color-scheme: light;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Merriweather', serif;
-  --bg-main: #fbf0d9;
-  --bg-surface: #f3e5c8;
-  --bg-hover: #ebd9b5;
-  --text-main: #342416;
-  --text-muted: #6b533d;
-  --text-dim: #927558;
-  --border-subtle: #dec8a0;
-  --accent-blue: #b45309;
-  --accent: #b45309;
-  --accent-glow: rgba(180, 83, 9, 0.25);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="nord"] {
-  --on-accent: #07111b;
-  color-scheme: dark;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --bg-main: #10251e;
-  --bg-surface: #18382c;
-  --bg-hover: #23503e;
-  --text-main: #eceff4;
-  --text-muted: #d8dee9;
-  --text-dim: #6ee7b7;
-  --border-subtle: #2e5c49;
-  --accent-blue: #6ee7b7;
-  --accent: #6ee7b7;
-  --accent-glow: rgba(136, 192, 208, 0.35);
-  --radius-pill: 28px;
-  --radius-card: 20px;
-}
-
-[data-theme="alabaster"] {
-  --on-accent: #ffffff;
-  color-scheme: light;
-  --font-gemini: 'Google Sans', 'Google Sans Text', 'Plus Jakarta Sans', system-ui, sans-serif;
-  --bg-main: #fafafa;
-  --bg-surface: #ffffff;
-  --bg-hover: #f4f4f6;
-  --text-main: #18181b;
-  --text-muted: #52525b;
-  --text-dim: #71717a;
-  --border-subtle: #e4e4e7;
-  --accent-blue: #2563eb;
-  --accent: #18181b;
-  --accent-glow: rgba(24, 24, 27, 0.12);
-  --radius-pill: 28px;
-  --radius-card: 20px;
+  font-family: 'Google Sans', 'Google Sans Text', system-ui, sans-serif !important;
 }
 
 * {
@@ -200,107 +112,98 @@ body, .app-container {
   min-height: 100vh;
 }
 
-[data-theme="midnight"] body, [data-theme="midnight"] .app-container {
-  background-image: 
-    radial-gradient(1300px circle at 50% -120px, rgba(56, 189, 248, 0.08), transparent 70%),
-    radial-gradient(850px circle at 85% 15%, rgba(14, 165, 233, 0.04), transparent 60%);
+[data-theme="dark"] body, [data-theme="dark"] .app-container {
+  background-image:
+    radial-gradient(1300px circle at 50% -120px, rgba(138, 180, 248, 0.07), transparent 70%),
+    radial-gradient(850px circle at 85% 15%, rgba(138, 180, 248, 0.03), transparent 60%);
 }
 
-[data-theme="forest"] body, [data-theme="forest"] .app-container {
-  background-image: 
-    radial-gradient(1300px circle at 50% -120px, rgba(136, 192, 208, 0.08), transparent 70%),
-    radial-gradient(850px circle at 85% 15%, rgba(129, 161, 193, 0.04), transparent 60%);
+[data-theme="black"] body, [data-theme="black"] .app-container {
+  background-image: none;
+  background-color: #000000;
 }
 
-[data-theme="sunset"] body, [data-theme="sunset"] .app-container {
-  background-color: #fbf0d9;
-  background-image: 
-    radial-gradient(1400px circle at 50% -100px, rgba(243, 229, 200, 0.6), transparent 70%),
-    radial-gradient(900px circle at 85% 15%, rgba(235, 217, 181, 0.5), transparent 60%);
-}
-
-[data-theme="paper"] body, [data-theme="paper"] .app-container {
-  background-color: #fafafa;
-  background-image: 
-    radial-gradient(1400px circle at 50% -100px, rgba(255, 255, 255, 0.98), transparent 70%),
-    radial-gradient(900px circle at 85% 15%, rgba(243, 244, 246, 0.85), transparent 60%),
-    radial-gradient(1000px circle at 15% 50%, rgba(248, 250, 252, 0.9), transparent 60%);
+[data-theme="light"] body, [data-theme="light"] .app-container {
+  background-color: var(--bg-main);
+  background-image:
+    radial-gradient(1400px circle at 50% -100px, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(900px circle at 85% 15%, rgba(218, 220, 224, 0.35), transparent 60%);
 }
 
 /* Theme Contrast Safeguards for Light Themes (Alabaster & Sepia) */
-[data-theme="paper"], [data-theme="sunset"] {
+[data-theme="light"] {
   color-scheme: light;
 }
 
-[data-theme="paper"] .text-white,
-[data-theme="sunset"] .text-white {
+[data-theme="light"] .text-white,
+[data-theme="light"] .text-white {
   color: var(--text-main) !important;
 }
 
-[data-theme="paper"] .text-text\/40,
-[data-theme="sunset"] .text-text\/40 {
+[data-theme="light"] .text-text\/40,
+[data-theme="light"] .text-text\/40 {
   color: var(--text-dim) !important;
 }
 
-[data-theme="paper"] .text-text\/60,
-[data-theme="paper"] .text-text\/70,
-[data-theme="sunset"] .text-text\/60,
-[data-theme="sunset"] .text-text\/70 {
+[data-theme="light"] .text-text\/60,
+[data-theme="light"] .text-text\/70,
+[data-theme="light"] .text-text\/60,
+[data-theme="light"] .text-text\/70 {
   color: var(--text-muted) !important;
 }
 
-[data-theme="paper"] .bg-white\/5,
-[data-theme="paper"] .bg-white\/\[0\.03\],
-[data-theme="paper"] .bg-white\/\[0\.04\],
-[data-theme="paper"] .bg-white\/\[0\.05\],
-[data-theme="paper"] .bg-white\/\[0\.06\],
-[data-theme="paper"] .bg-white\/\[0\.08\],
-[data-theme="paper"] .bg-white\/10,
-[data-theme="sunset"] .bg-white\/5,
-[data-theme="sunset"] .bg-white\/\[0\.03\],
-[data-theme="sunset"] .bg-white\/\[0\.04\],
-[data-theme="sunset"] .bg-white\/\[0\.05\],
-[data-theme="sunset"] .bg-white\/\[0\.06\],
-[data-theme="sunset"] .bg-white\/\[0\.08\],
-[data-theme="sunset"] .bg-white\/10 {
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.04\],
+[data-theme="light"] .bg-white\/\[0\.05\],
+[data-theme="light"] .bg-white\/\[0\.06\],
+[data-theme="light"] .bg-white\/\[0\.08\],
+[data-theme="light"] .bg-white\/10,
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.04\],
+[data-theme="light"] .bg-white\/\[0\.05\],
+[data-theme="light"] .bg-white\/\[0\.06\],
+[data-theme="light"] .bg-white\/\[0\.08\],
+[data-theme="light"] .bg-white\/10 {
   background-color: var(--bg-surface) !important;
 }
 
-[data-theme="paper"] .hover\:bg-white\/10:hover,
-[data-theme="paper"] .hover\:bg-white\/5:hover,
-[data-theme="paper"] .hover\:bg-white\/\[0\.06\]:hover,
-[data-theme="paper"] .hover\:bg-white\/\[0\.08\]:hover,
-[data-theme="paper"] .hover\:bg-white\/\[0\.12\]:hover,
-[data-theme="sunset"] .hover\:bg-white\/10:hover,
-[data-theme="sunset"] .hover\:bg-white\/5:hover,
-[data-theme="sunset"] .hover\:bg-white\/\[0\.06\]:hover,
-[data-theme="sunset"] .hover\:bg-white\/\[0\.08\]:hover,
-[data-theme="sunset"] .hover\:bg-white\/\[0\.12\]:hover {
+[data-theme="light"] .hover\:bg-white\/10:hover,
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.12\]:hover,
+[data-theme="light"] .hover\:bg-white\/10:hover,
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.12\]:hover {
   background-color: var(--bg-hover) !important;
 }
 
-[data-theme="paper"] .border-white\/5,
-[data-theme="paper"] .border-white\/10,
-[data-theme="paper"] .border-white\/12,
-[data-theme="paper"] .border-white\/15,
-[data-theme="paper"] .border-white\/20,
-[data-theme="sunset"] .border-white\/5,
-[data-theme="sunset"] .border-white\/10,
-[data-theme="sunset"] .border-white\/12,
-[data-theme="sunset"] .border-white\/15,
-[data-theme="sunset"] .border-white\/20 {
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/12,
+[data-theme="light"] .border-white\/15,
+[data-theme="light"] .border-white\/20,
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/12,
+[data-theme="light"] .border-white\/15,
+[data-theme="light"] .border-white\/20 {
   border-color: var(--border-subtle) !important;
 }
 
-[data-theme="paper"] .bottom-nav-pill,
-[data-theme="sunset"] .bottom-nav-pill {
+[data-theme="light"] .bottom-nav-pill,
+[data-theme="light"] .bottom-nav-pill {
   background: var(--bg-surface) !important;
   border-color: var(--border-subtle) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08) !important;
 }
 
-[data-theme="paper"] .sticky-editor-toolbar,
-[data-theme="sunset"] .sticky-editor-toolbar {
+[data-theme="light"] .sticky-editor-toolbar,
+[data-theme="light"] .sticky-editor-toolbar {
   background: var(--bg-surface) !important;
   border-color: var(--border-subtle) !important;
 }
@@ -382,7 +285,7 @@ h1, h2, h3 {
 }
 
 .folder-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Google Sans', 'Google Sans Text', system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: -0.01em;
 }

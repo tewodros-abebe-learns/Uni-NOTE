@@ -1,15 +1,21 @@
 export const THEMES = [
-  { id: 'midnight', name: 'Midnight', desc: 'Cosmic Blue', color: '#070b16', accent: '#38bdf8' },
-  { id: 'sunset', name: 'Sunset', desc: 'Warm Sand', color: '#fbf0d9', accent: '#b45309' },
-  { id: 'forest', name: 'Forest', desc: 'Deep Evergreen', color: '#10251e', accent: '#6ee7b7' },
-  { id: 'royal', name: 'Royal', desc: 'Deep Violet', color: '#171126', accent: '#c4b5fd' },
-  { id: 'paper', name: 'Paper', desc: 'Clean Minimalist', color: '#fafafa', accent: '#18181b' },
+  { id: 'light', name: 'Light', desc: 'Clean bright workspace', mode: 'light', color: '#ffffff', accent: '#1a73e8' },
+  { id: 'dark', name: 'Dark', desc: 'Easy on the eyes', mode: 'dark', color: '#131314', accent: '#8ab4f8' },
+  { id: 'black', name: 'Full Dark', desc: 'True black · OLED', mode: 'dark', color: '#000000', accent: '#8ab4f8' },
 ] as const;
 export type ThemeId = typeof THEMES[number]['id'];
+export const DEFAULT_THEME: ThemeId = 'dark';
+/** Every historical/custom palette collapses onto the three supported themes. */
 const legacy: Record<string, ThemeId> = {
-  obsidian: 'royal', sepia: 'sunset', nord: 'forest', alabaster: 'paper',
+  // light family
+  paper: 'light', alabaster: 'light', sunset: 'light', sepia: 'light',
+  // dark family
+  midnight: 'dark', royal: 'dark', forest: 'dark', nord: 'dark',
+  // full-dark family
+  obsidian: 'black',
 };
 export function normalizeTheme(value: unknown): ThemeId {
-  if (typeof value !== 'string') return 'midnight';
-  return THEMES.some(theme => theme.id === value) ? value as ThemeId : legacy[value] || 'midnight';
+  if (typeof value !== 'string') return DEFAULT_THEME;
+  return THEMES.some(theme => theme.id === value) ? value as ThemeId : legacy[value] || DEFAULT_THEME;
 }
+export const isLightTheme = (value: unknown): boolean => normalizeTheme(value) === 'light';

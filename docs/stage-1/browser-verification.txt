@@ -1,0 +1,19 @@
+Stage 1 FINAL production-browser smoke check
+2026-10-18T18:26:44Z
+$ BROWSER_EXECUTABLE_PATH=/tmp/chromium npm run test:browser (sandbox shared-library path configured)
+
+> uni-note@0.1.0 test:browser
+> node scripts/stage1-browser-check.mjs
+
+Browser: 153.0.8010.0; Node: v22.22.3
+PASS: production app opens in guest mode
+PASS: midnight compiled background, surface, text, border, accent and button tokens
+PASS: sunset compiled background, surface, text, border, accent and button tokens
+PASS: forest compiled background, surface, text, border, accent and button tokens
+PASS: royal compiled background, surface, text, border, accent and button tokens
+PASS: paper compiled background, surface, text, border, accent and button tokens
+PASS: all five theme choices apply through the UI and persist preferences
+PASS: demo note opens with rendered KaTeX, allowed YouTube iframe and gear controls
+PASS: hostile note does not execute; image layout survives sanitization
+PASS: zero uncaught browser errors (external services intentionally isolated)
+RESULT: browser smoke check exited 0

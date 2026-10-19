@@ -1,0 +1,758 @@
+v22.22.3
+10.9.8
+
+> uni-note@0.1.0 lint
+> tsc --noEmit
+
+
+> uni-note@0.1.0 test
+> tsx --test tests/*.test.ts
+
+TAP version 13
+# Subtest: per-note lanes serialize rapid writes while different notes/accounts remain independent
+ok 1 - per-note lanes serialize rapid writes while different notes/accounts remain independent
+  ---
+  duration_ms: 1.862199
+  type: 'test'
+  ...
+# Subtest: a rejected write does not poison its lane
+ok 2 - a rejected write does not poison its lane
+  ---
+  duration_ms: 0.527686
+  type: 'test'
+  ...
+# Subtest: a caller giving up waiting does not release the underlying write lane
+ok 3 - a caller giving up waiting does not release the underlying write lane
+  ---
+  duration_ms: 0.257096
+  type: 'test'
+  ...
+# Subtest: timestamp merge prefers newer data and cloud ties; tombstones remain terminal
+ok 4 - timestamp merge prefers newer data and cloud ties; tombstones remain terminal
+  ---
+  duration_ms: 0.25998
+  type: 'test'
+  ...
+# Subtest: same-UID auth callbacks do not invalidate navigation; account switches invalidate async work
+ok 5 - same-UID auth callbacks do not invalidate navigation; account switches invalidate async work
+  ---
+  duration_ms: 0.375539
+  type: 'test'
+  ...
+# Subtest: offline writes remain in the durable per-user outbox and replay successfully
+ok 6 - offline writes remain in the durable per-user outbox and replay successfully
+  ---
+  duration_ms: 8.135387
+  type: 'test'
+  ...
+# Subtest: late acknowledgement cannot erase a newer staged edit or its local cache
+ok 7 - late acknowledgement cannot erase a newer staged edit or its local cache
+  ---
+  duration_ms: 0.598323
+  type: 'test'
+  ...
+# Subtest: queued payload is immutable even if the caller mutates its object
+ok 8 - queued payload is immutable even if the caller mutates its object
+  ---
+  duration_ms: 0.319496
+  type: 'test'
+  ...
+# Subtest: cloud tombstone suppresses even a newer pending edit and archives it without resurrection
+ok 9 - cloud tombstone suppresses even a newer pending edit and archives it without resurrection
+  ---
+  duration_ms: 0.635632
+  type: 'test'
+  ...
+# Subtest: cloud conflict on equal timestamp keeps server data and archives the attempted edit
+ok 10 - cloud conflict on equal timestamp keeps server data and archives the attempted edit
+  ---
+  duration_ms: 0.665556
+  type: 'test'
+  ...
+# Subtest: account switch prevents queued cloud writes and never publishes the old failure into the new account
+ok 11 - account switch prevents queued cloud writes and never publishes the old failure into the new account
+  ---
+  duration_ms: 0.412093
+  type: 'test'
+  ...
+# Subtest: cloud promotion replaces complete tokens only, deduplicates and preserves surrounding markup
+ok 12 - cloud promotion replaces complete tokens only, deduplicates and preserves surrounding markup
+  ---
+  duration_ms: 0.563169
+  type: 'test'
+  ...
+# Subtest: failed or insecure media promotion rejects instead of publishing broken references
+ok 13 - failed or insecure media promotion rejects instead of publishing broken references
+  ---
+  duration_ms: 0.260998
+  type: 'test'
+  ...
+# Subtest: authorized-domain diagnosis uses exact hostnames, including preview domains
+ok 14 - authorized-domain diagnosis uses exact hostnames, including preview domains
+  ---
+  duration_ms: 0.172721
+  type: 'test'
+  ...
+# Subtest: already promoted Firebase URLs are never promoted again or nested inside themselves
+ok 15 - already promoted Firebase URLs are never promoted again or nested inside themselves
+  ---
+  duration_ms: 0.124422
+  type: 'test'
+  ...
+# Subtest: pending writes replay after constructing a fresh sync service from persisted storage
+ok 16 - pending writes replay after constructing a fresh sync service from persisted storage
+  ---
+  duration_ms: 0.538129
+  type: 'test'
+  ...
+# Subtest: a strictly newer cloud snapshot wins while the attempted local content remains recoverable
+ok 17 - a strictly newer cloud snapshot wins while the attempted local content remains recoverable
+  ---
+  duration_ms: 0.333648
+  type: 'test'
+  ...
+# Subtest: corrupt outbox data is rejected without overwriting its recovery source
+ok 18 - corrupt outbox data is rejected without overwriting its recovery source
+  ---
+  duration_ms: 1.644639
+  type: 'test'
+  ...
+# Subtest: folder moves reject self, descendants and missing nodes
+ok 19 - folder moves reject self, descendants and missing nodes
+  ---
+  duration_ms: 0.776646
+  type: 'test'
+  ...
+# Subtest: valid moves and root moves remain available
+ok 20 - valid moves and root moves remain available
+  ---
+  duration_ms: 0.141342
+  type: 'test'
+  ...
+# Subtest: breadcrumbs and subtree IDs preserve valid hierarchies
+ok 21 - breadcrumbs and subtree IDs preserve valid hierarchies
+  ---
+  duration_ms: 0.72677
+  type: 'test'
+  ...
+# Subtest: legacy cycles terminate in navigation/deletion and cannot become move destinations
+ok 22 - legacy cycles terminate in navigation/deletion and cannot become move destinations
+  ---
+  duration_ms: 0.217169
+  type: 'test'
+  ...
+# Subtest: deep trees are traversed without recursion overflow
+ok 23 - deep trees are traversed without recursion overflow
+  ---
+  duration_ms: 10.680767
+  type: 'test'
+  ...
+# Subtest: quota failures retain disk data and complete in-memory edits; retry recovers all
+ok 24 - quota failures retain disk data and complete in-memory edits; retry recovers all
+  ---
+  duration_ms: 0.940669
+  type: 'test'
+  ...
+# Subtest: a full vault never prunes the oldest notes or clears media
+ok 25 - a full vault never prunes the oldest notes or clears media
+  ---
+  duration_ms: 0.526634
+  type: 'test'
+  ...
+# Subtest: intentional empty notes/folders persist without demo resurrection
+ok 26 - intentional empty notes/folders persist without demo resurrection
+  ---
+  duration_ms: 0.726146
+  type: 'test'
+  ...
+# Subtest: account cache reads never implicitly merge guest notes or folders
+ok 27 - account cache reads never implicitly merge guest notes or folders
+  ---
+  duration_ms: 0.154033
+  type: 'test'
+  ...
+# Subtest: known private mirrors left by older releases are hidden from Guest without discarding their source
+ok 28 - known private mirrors left by older releases are hidden from Guest without discarding their source
+  ---
+  duration_ms: 0.493354
+  type: 'test'
+  ...
+# Subtest: large images are durable Blobs; notes retain only tiny stable IDs
+ok 29 - large images are durable Blobs; notes retain only tiny stable IDs
+  ---
+  duration_ms: 39.446979
+  type: 'test'
+  ...
+# Subtest: failed IndexedDB writes do not return a fake durable reference or remove existing media
+ok 30 - failed IndexedDB writes do not return a fake durable reference or remove existing media
+  ---
+  duration_ms: 2.401952
+  type: 'test'
+  ...
+# Subtest: legacy base64 cache migration retains original IDs and only deletes its source after success
+ok 31 - legacy base64 cache migration retains original IDs and only deletes its source after success
+  ---
+  duration_ms: 2.405167
+  type: 'test'
+  ...
+# Subtest: inline base64 note migration keeps surrounding Markdown and commits images first
+ok 32 - inline base64 note migration keeps surrounding Markdown and commits images first
+  ---
+  duration_ms: 2.051068
+  type: 'test'
+  ...
+# Subtest: invalid/oversized images are rejected instead of polluting note storage
+ok 33 - invalid/oversized images are rejected instead of polluting note storage
+  ---
+  duration_ms: 33.618527
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: script
+ok 34 - XSS neutralized: script
+  ---
+  duration_ms: 30.441146
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: image event
+ok 35 - XSS neutralized: image event
+  ---
+  duration_ms: 14.544807
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: SVG event
+ok 36 - XSS neutralized: SVG event
+  ---
+  duration_ms: 15.405832
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: javascript link
+ok 37 - XSS neutralized: javascript link
+  ---
+  duration_ms: 17.910008
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: encoded link
+ok 38 - XSS neutralized: encoded link
+  ---
+  duration_ms: 10.57993
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: control character link
+ok 39 - XSS neutralized: control character link
+  ---
+  duration_ms: 8.128722
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: data document
+ok 40 - XSS neutralized: data document
+  ---
+  duration_ms: 7.866544
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: iframe srcdoc
+ok 41 - XSS neutralized: iframe srcdoc
+  ---
+  duration_ms: 10.186152
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: host suffix
+ok 42 - XSS neutralized: host suffix
+  ---
+  duration_ms: 8.555198
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: host credentials
+ok 43 - XSS neutralized: host credentials
+  ---
+  duration_ms: 7.471823
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: YouTube non-embed
+ok 44 - XSS neutralized: YouTube non-embed
+  ---
+  duration_ms: 5.707984
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: YouTube HTTP
+ok 45 - XSS neutralized: YouTube HTTP
+  ---
+  duration_ms: 14.02807
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: YouTube query
+ok 46 - XSS neutralized: YouTube query
+  ---
+  duration_ms: 5.572468
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: YouTube fragment
+ok 47 - XSS neutralized: YouTube fragment
+  ---
+  duration_ms: 5.365233
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: YouTube port
+ok 48 - XSS neutralized: YouTube port
+  ---
+  duration_ms: 5.21907
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: base injection
+ok 49 - XSS neutralized: base injection
+  ---
+  duration_ms: 5.343046
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: form hijack
+ok 50 - XSS neutralized: form hijack
+  ---
+  duration_ms: 7.837202
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: object embed
+ok 51 - XSS neutralized: object embed
+  ---
+  duration_ms: 6.515667
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: meta redirect
+ok 52 - XSS neutralized: meta redirect
+  ---
+  duration_ms: 5.036698
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: CSS URL
+ok 53 - XSS neutralized: CSS URL
+  ---
+  duration_ms: 16.743343
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: SVG foreignObject
+ok 54 - XSS neutralized: SVG foreignObject
+  ---
+  duration_ms: 6.371413
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: SVG xlink
+ok 55 - XSS neutralized: SVG xlink
+  ---
+  duration_ms: 6.27722
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: DOM clobbering
+ok 56 - XSS neutralized: DOM clobbering
+  ---
+  duration_ms: 7.173278
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: mutation XSS
+ok 57 - XSS neutralized: mutation XSS
+  ---
+  duration_ms: 7.841391
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: SVG data image
+ok 58 - XSS neutralized: SVG data image
+  ---
+  duration_ms: 5.412183
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: Markdown link
+ok 59 - XSS neutralized: Markdown link
+  ---
+  duration_ms: 6.064126
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: Markdown image attribute breakout
+ok 60 - XSS neutralized: Markdown image attribute breakout
+  ---
+  duration_ms: 33.174658
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: Markdown image URL breakout
+ok 61 - XSS neutralized: Markdown image URL breakout
+  ---
+  duration_ms: 11.975898
+  type: 'test'
+  ...
+# Subtest: XSS neutralized: math placeholder injection
+ok 62 - XSS neutralized: math placeholder injection
+  ---
+  duration_ms: 6.260609
+  type: 'test'
+  ...
+# Subtest: YouTube, start time, gear, layout attributes and SVG icon survive
+ok 63 - YouTube, start time, gear, layout attributes and SVG icon survive
+  ---
+  duration_ms: 21.194993
+  type: 'test'
+  ...
+# Subtest: arbitrary iframe cannot acquire trusted policy
+ok 64 - arbitrary iframe cannot acquire trusted policy
+  ---
+  duration_ms: 5.009612
+  type: 'test'
+  ...
+# Subtest: Markdown formatting, tables, image references and layout survive
+ok 65 - Markdown formatting, tables, image references and layout survive
+  ---
+  duration_ms: 39.474008
+  type: 'test'
+  ...
+# Subtest: inline and block LaTeX remain renderable after sanitization
+ok 66 - inline and block LaTeX remain renderable after sanitization
+  ---
+  duration_ms: 68.065272
+  type: 'test'
+  ...
+# Subtest: attribute interpolation cannot create markup from image alt text
+ok 67 - attribute interpolation cannot create markup from image alt text
+  ---
+  duration_ms: 17.630723
+  type: 'test'
+  ...
+# Subtest: web and raster data images survive, unsafe image schemes do not
+ok 68 - web and raster data images survive, unsafe image schemes do not
+  ---
+  duration_ms: 18.309173
+  type: 'test'
+  ...
+# Subtest: LaTeX comparison operators and alignment ampersands remain text, not HTML
+ok 69 - LaTeX comparison operators and alignment ampersands remain text, not HTML
+  ---
+  duration_ms: 9.290328
+  type: 'test'
+  ...
+# Subtest: editor highlight color survives but arbitrary mark CSS is stripped
+ok 70 - editor highlight color survives but arbitrary mark CSS is stripped
+  ---
+  duration_ms: 46.633613
+  type: 'test'
+  ...
+# Subtest: only vault-issued Blob image URLs survive sanitization
+ok 71 - only vault-issued Blob image URLs survive sanitization
+  ---
+  duration_ms: 71.380443
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: ""
+ok 72 - parser roundtrip preserves every character: ""
+  ---
+  duration_ms: 1.256142
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "\\n"
+ok 73 - parser roundtrip preserves every character: "\\n"
+  ---
+  duration_ms: 0.675979
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "\\n\\n"
+ok 74 - parser roundtrip preserves every character: "\\n\\n"
+  ---
+  duration_ms: 0.120341
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "plain\\n\\ntext\\n"
+ok 75 - parser roundtrip preserves every character: "plain\\n\\ntext\\n"
+  ---
+  duration_ms: 0.243005
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "\# Before\\n\\n![Image](media_example.png) @@le
+ok 76 - parser roundtrip preserves every character: "\# Before\\n\\n![Image](media_example.png) @@le
+  ---
+  duration_ms: 1.197352
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "\# Before\\r\\n\\r\\n![Image](media_example.png) 
+ok 77 - parser roundtrip preserves every character: "\# Before\\r\\n\\r\\n![Image](media_example.png) 
+  ---
+  duration_ms: 0.426556
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "$$unfinished\\nline"
+ok 78 - parser roundtrip preserves every character: "$$unfinished\\nline"
+  ---
+  duration_ms: 0.106539
+  type: 'test'
+  ...
+# Subtest: parser roundtrip preserves every character: "```md\\n![literal](x.png)\\n$$literal$$\\n```\\n
+ok 79 - parser roundtrip preserves every character: "```md\\n![literal](x.png)\\n$$literal$$\\n```\\n
+  ---
+  duration_ms: 0.101031
+  type: 'test'
+  ...
+# Subtest: structured edits modify only the selected source span
+ok 80 - structured edits modify only the selected source span
+  ---
+  duration_ms: 0.501861
+  type: 'test'
+  ...
+# Subtest: deleting one block preserves other blocks including duplicated media URLs
+ok 81 - deleting one block preserves other blocks including duplicated media URLs
+  ---
+  duration_ms: 0.462097
+  type: 'test'
+  ...
+# Subtest: both marker syntaxes parse; updates emit one canonical marker
+ok 82 - both marker syntaxes parse; updates emit one canonical marker
+  ---
+  duration_ms: 0.195701
+  type: 'test'
+  ...
+# Subtest: fenced code and ordinary prose are not classified as exclusive media blocks
+ok 83 - fenced code and ordinary prose are not classified as exclusive media blocks
+  ---
+  duration_ms: 0.235638
+  type: 'test'
+  ...
+# Subtest: asynchronous insertions preserve intervening user edits
+ok 84 - asynchronous insertions preserve intervening user edits
+  ---
+  duration_ms: 0.143741
+  type: 'test'
+  ...
+# Subtest: nested LaTeX environments stay one block until the outer environment closes
+ok 85 - nested LaTeX environments stay one block until the outer environment closes
+  ---
+  duration_ms: 0.387722
+  type: 'test'
+  ...
+# Subtest: a single-line LaTeX environment is a formula without absorbing neighboring content
+ok 86 - a single-line LaTeX environment is a formula without absorbing neighboring content
+  ---
+  duration_ms: 0.149635
+  type: 'test'
+  ...
+# Subtest: imports every note from arrays without replacing timestamps or source sections
+ok 87 - imports every note from arrays without replacing timestamps or source sections
+  ---
+  duration_ms: 1.977834
+  type: 'test'
+  ...
+# Subtest: flat folder tree and nested folder notes remap all parent/note references
+ok 88 - flat folder tree and nested folder notes remap all parent/note references
+  ---
+  duration_ms: 0.468722
+  type: 'test'
+  ...
+# Subtest: rejects cycles, duplicates, malformed sections and unsupported versions before applying changes
+ok 89 - rejects cycles, duplicates, malformed sections and unsupported versions before applying changes
+  ---
+  duration_ms: 0.993459
+  type: 'test'
+  ...
+# Subtest: accepts legacy content and sectionsArray and preserves Firestore-style timestamps
+ok 90 - accepts legacy content and sectionsArray and preserves Firestore-style timestamps
+  ---
+  duration_ms: 0.258659
+  type: 'test'
+  ...
+# Subtest: portable JSON includes deduplicated local image bytes and roundtrips notes/folders
+ok 91 - portable JSON includes deduplicated local image bytes and roundtrips notes/folders
+  ---
+  duration_ms: 1.474753
+  type: 'test'
+  ...
+# Subtest: missing images fail export instead of falsely claiming a complete backup
+ok 92 - missing images fail export instead of falsely claiming a complete backup
+  ---
+  duration_ms: 0.293743
+  type: 'test'
+  ...
+# Subtest: Full is canonical, safe and distinct from Large for images and video
+ok 93 - Full is canonical, safe and distinct from Large for images and video
+  ---
+  duration_ms: 1.657261
+  type: 'test'
+  ...
+# Subtest: bundled math renders inline, display and environments without global scripts
+ok 94 - bundled math renders inline, display and environments without global scripts
+  ---
+  duration_ms: 45.388509
+  type: 'test'
+  ...
+# Subtest: invalid math stays readable and untrusted KaTeX commands cannot create script URLs
+ok 95 - invalid math stays readable and untrusted KaTeX commands cannot create script URLs
+  ---
+  duration_ms: 17.683092
+  type: 'test'
+  ...
+# Subtest: search changes highlight/clear safely while preserving math and media identity
+ok 96 - search changes highlight/clear safely while preserving math and media identity
+  ---
+  duration_ms: 13.462845
+  type: 'test'
+  ...
+# Subtest: HTML export escapes metadata, renders MathML and omits editing controls and scripts
+ok 97 - HTML export escapes metadata, renders MathML and omits editing controls and scripts
+  ---
+  duration_ms: 72.229693
+  type: 'test'
+  ...
+# Subtest: PWA install choice is handled once and installed events update the drawer state
+ok 98 - PWA install choice is handled once and installed events update the drawer state
+  ---
+  duration_ms: 2.153381
+  type: 'test'
+  ...
+# Subtest: ISO timestamps and the epoch remain unchanged while malformed timestamps are rejected
+ok 99 - ISO timestamps and the epoch remain unchanged while malformed timestamps are rejected
+  ---
+  duration_ms: 0.286707
+  type: 'test'
+  ...
+# Subtest: non-raster HTML image export refuses omission and points to lossless formats
+ok 100 - non-raster HTML image export refuses omission and points to lossless formats
+  ---
+  duration_ms: 0.692269
+  type: 'test'
+  ...
+# Subtest: oversized portable exports fail before allocating image base64 data
+ok 101 - oversized portable exports fail before allocating image base64 data
+  ---
+  duration_ms: 0.2961
+  type: 'test'
+  ...
+# Subtest: Tailwind inline tokens map to live CSS variables
+ok 102 - Tailwind inline tokens map to live CSS variables
+  ---
+  duration_ms: 1.214585
+  type: 'test'
+  ...
+# Subtest: Midnight: complete palette and accessible primary contrast
+ok 103 - Midnight: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.54305
+  type: 'test'
+  ...
+# Subtest: Sunset: complete palette and accessible primary contrast
+ok 104 - Sunset: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.272346
+  type: 'test'
+  ...
+# Subtest: Forest: complete palette and accessible primary contrast
+ok 105 - Forest: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.155709
+  type: 'test'
+  ...
+# Subtest: Royal: complete palette and accessible primary contrast
+ok 106 - Royal: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.215029
+  type: 'test'
+  ...
+# Subtest: Paper: complete palette and accessible primary contrast
+ok 107 - Paper: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.190938
+  type: 'test'
+  ...
+# Subtest: legacy theme preferences migrate and invalid values use a safe default
+ok 108 - legacy theme preferences migrate and invalid values use a safe default
+  ---
+  duration_ms: 0.314868
+  type: 'test'
+  ...
+1..108
+# tests 108
+# suites 0
+# pass 108
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3863.559079
+
+> uni-note@0.1.0 build
+> vite build
+
+vite v6.4.4 building for production...
+transforming...
+✓ 2127 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                               0.49 kB
+dist/index.html                                         0.97 kB │ gzip:   0.45 kB
+dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff           4.42 kB
+dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2          4.93 kB
+dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2          5.21 kB
+dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2          5.47 kB
+dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff           5.98 kB
+dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff           6.19 kB
+dist/assets/KaTeX_Size1-Regular-C195tn64.woff           6.50 kB
+dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2    6.91 kB
+dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2       6.91 kB
+dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf            7.59 kB
+dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff     7.66 kB
+dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff        7.72 kB
+dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2         9.64 kB
+dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2     10.34 kB
+dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf           10.36 kB
+dist/assets/KaTeX_Script-Regular-D5yQViql.woff         10.59 kB
+dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2       11.32 kB
+dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2          11.35 kB
+dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf           11.51 kB
+dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2      12.03 kB
+dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2        12.22 kB
+dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf           12.23 kB
+dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff      12.32 kB
+dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf     12.34 kB
+dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf        12.37 kB
+dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff        13.21 kB
+dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff           13.30 kB
+dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2    13.57 kB
+dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff       14.11 kB
+dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff         14.41 kB
+dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff     16.03 kB
+dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2       16.40 kB
+dist/assets/KaTeX_Math-Italic-t53AETM-.woff2           16.44 kB
+dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf          16.65 kB
+dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2       16.78 kB
+dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2           16.99 kB
+dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff        18.67 kB
+dist/assets/KaTeX_Math-Italic-DA0__PXp.woff            18.75 kB
+dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff        19.41 kB
+dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf       19.44 kB
+dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf         19.57 kB
+dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf            19.58 kB
+dist/assets/KaTeX_Main-Italic-BMLOBm91.woff            19.68 kB
+dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf        22.36 kB
+dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf          24.50 kB
+dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2             25.32 kB
+dist/assets/KaTeX_Main-Regular-B22Nviop.woff2          26.27 kB
+dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf      27.56 kB
+dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2           28.08 kB
+dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff              29.91 kB
+dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff           30.77 kB
+dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf         31.20 kB
+dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf             31.31 kB
+dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf         32.97 kB
+dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff            33.52 kB
+dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf             33.58 kB
+dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf               51.34 kB
+dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf            53.58 kB
+dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf             63.63 kB
+dist/assets/math-DxqQUoF2.css                          30.19 kB │ gzip:   8.06 kB
+dist/assets/index-B2-lksXV.css                         81.91 kB │ gzip:  13.75 kB
+dist/assets/workbox-window.prod.es5-BBnX5xw4.js         5.75 kB │ gzip:   2.36 kB
+dist/assets/storage-BOWvA-f1.js                        34.94 kB │ gzip:   8.70 kB
+dist/assets/firebase-core-BFfyWpRz.js                  95.64 kB │ gzip:  28.90 kB
+dist/assets/auth-OlHM01-Q.js                          113.21 kB │ gzip:  23.17 kB
+dist/assets/motion-I8H4Ul_p.js                        128.88 kB │ gzip:  42.38 kB
+dist/assets/react-BjXWrvmJ.js                         223.21 kB │ gzip:  69.23 kB
+dist/assets/math-DWH3lSyY.js                          263.35 kB │ gzip:  78.61 kB
+dist/assets/index-koGgeN70.js                         348.25 kB │ gzip: 100.94 kB
+dist/assets/firestore-ulWEuumU.js                     473.09 kB │ gzip: 118.28 kB
+✓ built in 6.37s
+
+PWA v1.3.0
+mode      generateSW
+precache  81 entries (2842.40 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-9c191d2f.js
+found 0 vulnerabilities

@@ -1,0 +1,421 @@
+v20.20.2
+10.9.8
+
+added 573 packages, and audited 574 packages in 10s
+
+125 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+> uni-note@0.1.0 lint
+> tsc --noEmit
+
+
+> uni-note@0.1.0 test
+> tsx --test tests/*.test.ts
+
+TAP version 13
+# Subtest: folder moves reject self, descendants and missing nodes
+ok 1 - folder moves reject self, descendants and missing nodes
+  ---
+  duration_ms: 0.830496
+  ...
+# Subtest: valid moves and root moves remain available
+ok 2 - valid moves and root moves remain available
+  ---
+  duration_ms: 0.148104
+  ...
+# Subtest: breadcrumbs and subtree IDs preserve valid hierarchies
+ok 3 - breadcrumbs and subtree IDs preserve valid hierarchies
+  ---
+  duration_ms: 0.781124
+  ...
+# Subtest: legacy cycles terminate in navigation/deletion and cannot become move destinations
+ok 4 - legacy cycles terminate in navigation/deletion and cannot become move destinations
+  ---
+  duration_ms: 0.149406
+  ...
+# Subtest: deep trees are traversed without recursion overflow
+ok 5 - deep trees are traversed without recursion overflow
+  ---
+  duration_ms: 11.305843
+  ...
+# Subtest: quota failures retain disk data and complete in-memory edits; retry recovers all
+ok 6 - quota failures retain disk data and complete in-memory edits; retry recovers all
+  ---
+  duration_ms: 1.032124
+  ...
+# Subtest: a full vault never prunes the oldest notes or clears media
+ok 7 - a full vault never prunes the oldest notes or clears media
+  ---
+  duration_ms: 0.49347
+  ...
+# Subtest: intentional empty notes/folders persist without demo resurrection
+ok 8 - intentional empty notes/folders persist without demo resurrection
+  ---
+  duration_ms: 0.661164
+  ...
+# Subtest: large images are durable Blobs; notes retain only tiny stable IDs
+ok 9 - large images are durable Blobs; notes retain only tiny stable IDs
+  ---
+  duration_ms: 26.976966
+  ...
+# Subtest: failed IndexedDB writes do not return a fake durable reference or remove existing media
+ok 10 - failed IndexedDB writes do not return a fake durable reference or remove existing media
+  ---
+  duration_ms: 2.61265
+  ...
+# Subtest: legacy base64 cache migration retains original IDs and only deletes its source after success
+ok 11 - legacy base64 cache migration retains original IDs and only deletes its source after success
+  ---
+  duration_ms: 2.428286
+  ...
+# Subtest: inline base64 note migration keeps surrounding Markdown and commits images first
+ok 12 - inline base64 note migration keeps surrounding Markdown and commits images first
+  ---
+  duration_ms: 11.313293
+  ...
+# Subtest: invalid/oversized images are rejected instead of polluting note storage
+ok 13 - invalid/oversized images are rejected instead of polluting note storage
+  ---
+  duration_ms: 19.030668
+  ...
+# Subtest: XSS neutralized: script
+ok 14 - XSS neutralized: script
+  ---
+  duration_ms: 29.201314
+  ...
+# Subtest: XSS neutralized: image event
+ok 15 - XSS neutralized: image event
+  ---
+  duration_ms: 15.998357
+  ...
+# Subtest: XSS neutralized: SVG event
+ok 16 - XSS neutralized: SVG event
+  ---
+  duration_ms: 16.403475
+  ...
+# Subtest: XSS neutralized: javascript link
+ok 17 - XSS neutralized: javascript link
+  ---
+  duration_ms: 21.548703
+  ...
+# Subtest: XSS neutralized: encoded link
+ok 18 - XSS neutralized: encoded link
+  ---
+  duration_ms: 12.09403
+  ...
+# Subtest: XSS neutralized: control character link
+ok 19 - XSS neutralized: control character link
+  ---
+  duration_ms: 9.616395
+  ...
+# Subtest: XSS neutralized: data document
+ok 20 - XSS neutralized: data document
+  ---
+  duration_ms: 21.423076
+  ...
+# Subtest: XSS neutralized: iframe srcdoc
+ok 21 - XSS neutralized: iframe srcdoc
+  ---
+  duration_ms: 11.846745
+  ...
+# Subtest: XSS neutralized: host suffix
+ok 22 - XSS neutralized: host suffix
+  ---
+  duration_ms: 10.836875
+  ...
+# Subtest: XSS neutralized: host credentials
+ok 23 - XSS neutralized: host credentials
+  ---
+  duration_ms: 9.475615
+  ...
+# Subtest: XSS neutralized: YouTube non-embed
+ok 24 - XSS neutralized: YouTube non-embed
+  ---
+  duration_ms: 17.159678
+  ...
+# Subtest: XSS neutralized: YouTube HTTP
+ok 25 - XSS neutralized: YouTube HTTP
+  ---
+  duration_ms: 8.516464
+  ...
+# Subtest: XSS neutralized: YouTube query
+ok 26 - XSS neutralized: YouTube query
+  ---
+  duration_ms: 7.356907
+  ...
+# Subtest: XSS neutralized: YouTube fragment
+ok 27 - XSS neutralized: YouTube fragment
+  ---
+  duration_ms: 6.412986
+  ...
+# Subtest: XSS neutralized: YouTube port
+ok 28 - XSS neutralized: YouTube port
+  ---
+  duration_ms: 19.413939
+  ...
+# Subtest: XSS neutralized: base injection
+ok 29 - XSS neutralized: base injection
+  ---
+  duration_ms: 18.471782
+  ...
+# Subtest: XSS neutralized: form hijack
+ok 30 - XSS neutralized: form hijack
+  ---
+  duration_ms: 35.916258
+  ...
+# Subtest: XSS neutralized: object embed
+ok 31 - XSS neutralized: object embed
+  ---
+  duration_ms: 8.692094
+  ...
+# Subtest: XSS neutralized: meta redirect
+ok 32 - XSS neutralized: meta redirect
+  ---
+  duration_ms: 7.570507
+  ...
+# Subtest: XSS neutralized: CSS URL
+ok 33 - XSS neutralized: CSS URL
+  ---
+  duration_ms: 11.733372
+  ...
+# Subtest: XSS neutralized: SVG foreignObject
+ok 34 - XSS neutralized: SVG foreignObject
+  ---
+  duration_ms: 8.252336
+  ...
+# Subtest: XSS neutralized: SVG xlink
+ok 35 - XSS neutralized: SVG xlink
+  ---
+  duration_ms: 7.714725
+  ...
+# Subtest: XSS neutralized: DOM clobbering
+ok 36 - XSS neutralized: DOM clobbering
+  ---
+  duration_ms: 14.431694
+  ...
+# Subtest: XSS neutralized: mutation XSS
+ok 37 - XSS neutralized: mutation XSS
+  ---
+  duration_ms: 10.483623
+  ...
+# Subtest: XSS neutralized: SVG data image
+ok 38 - XSS neutralized: SVG data image
+  ---
+  duration_ms: 15.948211
+  ...
+# Subtest: XSS neutralized: Markdown link
+ok 39 - XSS neutralized: Markdown link
+  ---
+  duration_ms: 7.765164
+  ...
+# Subtest: XSS neutralized: Markdown image attribute breakout
+ok 40 - XSS neutralized: Markdown image attribute breakout
+  ---
+  duration_ms: 19.753913
+  ...
+# Subtest: XSS neutralized: Markdown image URL breakout
+ok 41 - XSS neutralized: Markdown image URL breakout
+  ---
+  duration_ms: 12.998968
+  ...
+# Subtest: XSS neutralized: math placeholder injection
+ok 42 - XSS neutralized: math placeholder injection
+  ---
+  duration_ms: 7.436303
+  ...
+# Subtest: YouTube, start time, gear, layout attributes and SVG icon survive
+ok 43 - YouTube, start time, gear, layout attributes and SVG icon survive
+  ---
+  duration_ms: 34.264606
+  ...
+# Subtest: arbitrary iframe cannot acquire trusted policy
+ok 44 - arbitrary iframe cannot acquire trusted policy
+  ---
+  duration_ms: 5.792984
+  ...
+# Subtest: Markdown formatting, tables, image references and layout survive
+ok 45 - Markdown formatting, tables, image references and layout survive
+  ---
+  duration_ms: 33.543844
+  ...
+# Subtest: inline and block LaTeX remain renderable after sanitization
+ok 46 - inline and block LaTeX remain renderable after sanitization
+  ---
+  duration_ms: 35.887332
+  ...
+# Subtest: attribute interpolation cannot create markup from image alt text
+ok 47 - attribute interpolation cannot create markup from image alt text
+  ---
+  duration_ms: 12.888004
+  ...
+# Subtest: web and raster data images survive, unsafe image schemes do not
+ok 48 - web and raster data images survive, unsafe image schemes do not
+  ---
+  duration_ms: 13.014179
+  ...
+# Subtest: LaTeX comparison operators and alignment ampersands remain text, not HTML
+ok 49 - LaTeX comparison operators and alignment ampersands remain text, not HTML
+  ---
+  duration_ms: 18.280737
+  ...
+# Subtest: editor highlight color survives but arbitrary mark CSS is stripped
+ok 50 - editor highlight color survives but arbitrary mark CSS is stripped
+  ---
+  duration_ms: 38.990988
+  ...
+# Subtest: only vault-issued Blob image URLs survive sanitization
+ok 51 - only vault-issued Blob image URLs survive sanitization
+  ---
+  duration_ms: 65.671976
+  ...
+# Subtest: parser roundtrip preserves every character: ""
+ok 52 - parser roundtrip preserves every character: ""
+  ---
+  duration_ms: 1.116125
+  ...
+# Subtest: parser roundtrip preserves every character: "\\n"
+ok 53 - parser roundtrip preserves every character: "\\n"
+  ---
+  duration_ms: 0.672524
+  ...
+# Subtest: parser roundtrip preserves every character: "\\n\\n"
+ok 54 - parser roundtrip preserves every character: "\\n\\n"
+  ---
+  duration_ms: 0.195831
+  ...
+# Subtest: parser roundtrip preserves every character: "plain\\n\\ntext\\n"
+ok 55 - parser roundtrip preserves every character: "plain\\n\\ntext\\n"
+  ---
+  duration_ms: 0.121526
+  ...
+# Subtest: parser roundtrip preserves every character: "\# Before\\n\\n![Image](media_example.png) @@le
+ok 56 - parser roundtrip preserves every character: "\# Before\\n\\n![Image](media_example.png) @@le
+  ---
+  duration_ms: 1.093675
+  ...
+# Subtest: parser roundtrip preserves every character: "\# Before\\r\\n\\r\\n![Image](media_example.png) 
+ok 57 - parser roundtrip preserves every character: "\# Before\\r\\n\\r\\n![Image](media_example.png) 
+  ---
+  duration_ms: 0.599823
+  ...
+# Subtest: parser roundtrip preserves every character: "$$unfinished\\nline"
+ok 58 - parser roundtrip preserves every character: "$$unfinished\\nline"
+  ---
+  duration_ms: 0.141184
+  ...
+# Subtest: parser roundtrip preserves every character: "```md\\n![literal](x.png)\\n$$literal$$\\n```\\n
+ok 59 - parser roundtrip preserves every character: "```md\\n![literal](x.png)\\n$$literal$$\\n```\\n
+  ---
+  duration_ms: 0.115329
+  ...
+# Subtest: structured edits modify only the selected source span
+ok 60 - structured edits modify only the selected source span
+  ---
+  duration_ms: 0.590634
+  ...
+# Subtest: deleting one block preserves other blocks including duplicated media URLs
+ok 61 - deleting one block preserves other blocks including duplicated media URLs
+  ---
+  duration_ms: 0.229614
+  ...
+# Subtest: both marker syntaxes parse; updates emit one canonical marker
+ok 62 - both marker syntaxes parse; updates emit one canonical marker
+  ---
+  duration_ms: 0.184609
+  ...
+# Subtest: fenced code and ordinary prose are not classified as exclusive media blocks
+ok 63 - fenced code and ordinary prose are not classified as exclusive media blocks
+  ---
+  duration_ms: 0.276456
+  ...
+# Subtest: asynchronous insertions preserve intervening user edits
+ok 64 - asynchronous insertions preserve intervening user edits
+  ---
+  duration_ms: 0.235288
+  ...
+# Subtest: nested LaTeX environments stay one block until the outer environment closes
+ok 65 - nested LaTeX environments stay one block until the outer environment closes
+  ---
+  duration_ms: 0.390795
+  ...
+# Subtest: a single-line LaTeX environment is a formula without absorbing neighboring content
+ok 66 - a single-line LaTeX environment is a formula without absorbing neighboring content
+  ---
+  duration_ms: 0.186942
+  ...
+# Subtest: Tailwind inline tokens map to live CSS variables
+ok 67 - Tailwind inline tokens map to live CSS variables
+  ---
+  duration_ms: 1.121758
+  ...
+# Subtest: Midnight: complete palette and accessible primary contrast
+ok 68 - Midnight: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.543179
+  ...
+# Subtest: Sunset: complete palette and accessible primary contrast
+ok 69 - Sunset: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.27773
+  ...
+# Subtest: Forest: complete palette and accessible primary contrast
+ok 70 - Forest: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.168379
+  ...
+# Subtest: Royal: complete palette and accessible primary contrast
+ok 71 - Royal: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.184086
+  ...
+# Subtest: Paper: complete palette and accessible primary contrast
+ok 72 - Paper: complete palette and accessible primary contrast
+  ---
+  duration_ms: 0.206017
+  ...
+# Subtest: legacy theme preferences migrate and invalid values use a safe default
+ok 73 - legacy theme preferences migrate and invalid values use a safe default
+  ---
+  duration_ms: 0.223271
+  ...
+1..73
+# tests 73
+# suites 0
+# pass 73
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3315.146147
+
+> uni-note@0.1.0 build
+> vite build
+
+vite v6.4.4 building for production...
+transforming...
+✓ 2115 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/manifest.webmanifest                          0.35 kB
+dist/index.html                                    2.53 kB │ gzip:   0.96 kB
+dist/assets/index-BEwcvCvP.css                    81.50 kB │ gzip:  13.76 kB
+dist/assets/workbox-window.prod.es5-BBnX5xw4.js    5.75 kB │ gzip:   2.36 kB
+dist/assets/storage-C5AYYH4X.js                   17.20 kB │ gzip:   4.61 kB
+dist/assets/firebase-core-BFfyWpRz.js             95.64 kB │ gzip:  28.90 kB
+dist/assets/auth-OlHM01-Q.js                     113.21 kB │ gzip:  23.17 kB
+dist/assets/motion-I8H4Ul_p.js                   128.88 kB │ gzip:  42.38 kB
+dist/assets/react-BjXWrvmJ.js                    223.21 kB │ gzip:  69.23 kB
+dist/assets/index-8zqY21rC.js                    333.43 kB │ gzip:  94.82 kB
+dist/assets/firestore-DqvjcqrM.js                466.22 kB │ gzip: 116.99 kB
+✓ built in 6.73s
+
+PWA v1.3.0
+mode      generateSW
+precache  14 entries (1433.71 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-9c191d2f.js
+found 0 vulnerabilities

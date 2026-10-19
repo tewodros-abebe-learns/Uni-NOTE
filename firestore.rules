@@ -1,0 +1,125 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Google UID)
+    // Fields:
+    //   - uid: string (required) - Google UID
+    //   - displayName: string (optional) - User's display name
+    //   - email: string (required) - User's email address
+    //   - photoURL: string (optional) - User's profile picture URL
+    //
+    // Subcollection: users/{userId}/folders
+    // Document ID: {folderId}
+    // Fields:
+    //   - id: string (required) - Unique folder ID
+    //   - name: string (required) - Folder name
+    //   - parentId: string (optional) - ID of the parent folder
+    //   - level: int (required) - Nesting level
+    //
+    // Subcollection: users/{userId}/notes
+    // Document ID: {noteId}
+    // Fields:
+    //   - id: string (required) - Unique note ID
+    //   - folderId: string (required) - ID of the folder this note belongs to
+    //   - title: string (required) - Note title
+    //   - sectionsArray: list (optional) - Array of note sections
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+             request.resource.data[field].size() >= minLen &&
+             request.resource.data[field].size() <= maxLen;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data, userId) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid == request.auth.uid &&
+             data.uid == userId &&
+             isValidEmail(data.email) &&
+             (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() < 1000));
+    }
+
+    function isValidFolder(data, folderId) {
+      return data.keys().hasAll(['id', 'name']) &&
+             data.id == folderId &&
+             data.id is string && data.id.size() > 0 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             (!('level' in data) || (data.level is number && data.level >= 0)) &&
+             (!('parentId' in data) || (data.parentId is string || data.parentId == null));
+    }
+
+    function isValidNote(data, noteId) {
+      return data.keys().hasAll(['id', 'title']) &&
+             data.id == noteId &&
+             data.id is string && data.id.size() > 0 &&
+             data.title is string && data.title.size() <= 300 &&
+             (!('folderId' in data) || (data.folderId is string || data.folderId == null)) &&
+             (!('sections' in data) || (data.sections is list && data.sections.size() <= 500)) &&
+             (!('sectionsArray' in data) || (data.sectionsArray is list && data.sectionsArray.size() <= 500));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /test/connection {
+      allow read: if isAuthenticated();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow delete: if isOwner(userId);
+
+      match /folders/{folderId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFolder(request.resource.data, folderId);
+        allow update: if isOwner(userId) && isValidFolder(request.resource.data, folderId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /notes/{noteId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidNote(request.resource.data, noteId);
+        allow update: if isOwner(userId) && isValidNote(request.resource.data, noteId);
+        allow delete: if isOwner(userId);
+      }
+
+      match /media/{mediaId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

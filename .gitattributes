@@ -1,0 +1,2 @@
+# Keep captured command output verbatim, including whitespace in parser test names.
+docs/**/*.txt -whitespace

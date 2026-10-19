@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Uni.Note Knowledge Base.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Google UID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "User's profile picture URL" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Folder": {
+      "title": "Folder",
+      "description": "A hierarchical folder for organizing notes.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique folder ID" },
+        "name": { "type": "string", "description": "Folder name" },
+        "parentId": { "type": "string", "description": "ID of the parent folder (null for root)" },
+        "level": { "type": "integer", "description": "Nesting level" }
+      },
+      "required": ["id", "name", "level"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A student note with markdown and sections.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique note ID" },
+        "folderId": { "type": "string", "description": "ID of the folder this note belongs to" },
+        "title": { "type": "string", "description": "Note title" },
+        "sectionsArray": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Array of note sections (content blocks)"
+        }
+      },
+      "required": ["id", "folderId", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document."
+    },
+    "/users/{userId}/folders/{folderId}": {
+      "schema": "Folder",
+      "description": "A folder within a user's knowledge base."
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": "Note",
+      "description": "A note within a user's knowledge base."
+    }
+  }
+}

@@ -1,0 +1,43 @@
+
+> uni-note@0.1.0 test:browser
+> node scripts/stage1-browser-check.mjs
+
+Browser: 153.0.8010.0; Node: v22.22.3
+PASS: production app opens in guest mode
+PASS: midnight compiled background, surface, text, border, accent and button tokens
+PASS: sunset compiled background, surface, text, border, accent and button tokens
+PASS: forest compiled background, surface, text, border, accent and button tokens
+PASS: royal compiled background, surface, text, border, accent and button tokens
+PASS: paper compiled background, surface, text, border, accent and button tokens
+PASS: all five theme choices apply through the UI and persist preferences
+PASS: demo note opens with rendered KaTeX, allowed YouTube iframe and gear controls
+PASS: hostile note does not execute; image layout survives sanitization
+PASS: zero uncaught browser errors (external services intentionally isolated)
+
+> uni-note@0.1.0 test:stage2:browser
+> node scripts/stage2-browser-check.mjs
+
+Stage 2 browser: 153.0.8010.0; Node: v22.22.3
+PASS: actual drop + clipboard paste save >6 MB of PNG Blobs to IndexedDB; note vault stays <50 KB
+PASS: edits and all neighboring text, math, images and video survive switching among three sections
+PASS: structured formatting maps local slice selection to the full document without truncation
+PASS: leaving to root, opening another note, and returning preserves exact section content and loaded images
+PASS: cache-disabled reload flushes the latest edit and rehydrates PNG Blobs, video embeds and KaTeX
+PASS: browser back/forward flushes the departing note and restores the intended note
+PASS: a delayed image insertion returns to its original note/section and does not overwrite the concurrently edited next note
+PASS: quota failure leaves old disk notes intact, warns visibly, retains complete edits in memory and retries successfully
+PASS: a failed IndexedDB image transaction inserts no broken reference and leaves existing note content untouched
+PASS: legacy cache IDs and inline base64 migrate into real IndexedDB Blobs and still load after a second startup
+PASS: zero uncaught browser errors; no authentication or cloud data mutations performed
+
+> uni-note@0.1.0 test:stage3:browser
+> node scripts/stage3-browser-check.mjs
+
+Stage 3 adapter browser: 153.0.8010.0; Node v22.22.3
+PASS: same-account observer callback preserves the open editor, exact buffer and URL without new fetches/subscriptions
+PASS: logout flushes into the account cache only; no private account note or edit leaks into Guest Mode
+PASS: a second account remains isolated and does not re-claim guest notes already migrated to the first account
+PASS: delayed data from a previous account cannot overwrite the next account view
+PASS: a signed-in cached deep link and latest edit survive reload without guest fallback
+PASS: unauthorized-domain errors name the current hostname and link directly to Firebase settings
+PASS: zero uncaught page errors; Firebase adapter substituted; no real Google sign-in, uploads or cloud writes performed

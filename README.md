@@ -41,11 +41,11 @@ npm run build
 NODE_ENV=production npm start
 ```
 
-Vercel uses the repository root, `npm ci`, `npm run build`, and the `dist` output, as configured in `vercel.json`. This is a frontend deployment, not hosting for the Express image-upload API. Uploaded Express files require durable storage when self-hosted; Stage 3 uses owner-scoped Firebase Storage and durable local Blob fallback; it does not use the public Express upload fallback for account media. Firebase rules are versioned but must be deployed separately.
+Vercel uses the repository root, `npm ci`, `npm run build`, and the `dist` output, as configured in `vercel.json`. This is a frontend deployment, not hosting for the Express image-upload API. Uploaded Express files require durable storage when self-hosted. The Express upload endpoint is disabled unless `ENABLE_LOCAL_UPLOADS=true` (and `UPLOAD_TOKEN` is set, if you want it authenticated); the app itself never uses it. Account media is stored as IndexedDB Blobs locally and backed up to owner-scoped, chunked Firestore media documents (`users/{uid}/media/…`); every signed-in device of the account resolves those references from that backup. Firebase Storage is not used — it is unavailable on this project's AI Studio Starter Tier. Firebase rules are versioned but must be deployed separately.
 
 ## Important scope warning
 
-Local tests are not proof of live Google OAuth, deployed Firebase rules, or cross-device acceptance. Complete the Stage 3 live checklist before production approval. Account caches and Blob data remain in this browser unencrypted; Guest UI separation is not protection against someone with developer-tools access to the same browser profile. Stage 4 features are locally tested; native installation and final live acceptance remain unverified.
+Local tests are not proof of live Google OAuth, deployed Firebase rules, or cross-device acceptance. Complete the Stage 3 live checklist before production approval. Account caches and Blob data remain in this browser unencrypted; Guest UI separation is not protection against someone with developer-tools access to the same browser profile. Stage 4 features are locally tested; native installation and final live acceptance remain unverified. Themes are Light, Dark (default) and Full Dark (true black); every older palette name migrates onto one of them. The UI font is Google Sans, bundled locally from `public/fonts` (it is not a Google Fonts family) so it works offline.
 
 ## Backups, shortcuts and installation
 

@@ -28,11 +28,14 @@ for (const theme of THEMES) test(`${theme.name}: complete palette and accessible
   assert.ok(contrast(vars['bg-surface'], vars['text-main']) >= 7, 'surface text contrast');
   assert.ok(contrast(vars.accent, vars['on-accent']) >= 4.5, 'accent button contrast');
 });
-test('legacy theme preferences migrate and invalid values use a safe default', () => {
-  assert.equal(normalizeTheme('obsidian'), 'royal');
-  assert.equal(normalizeTheme('nord'), 'forest');
-  assert.equal(normalizeTheme('sepia'), 'sunset');
-  assert.equal(normalizeTheme('alabaster'), 'paper');
-  assert.equal(normalizeTheme('bad'), 'midnight');
-  assert.equal(normalizeTheme(null), 'midnight');
+test('legacy theme preferences migrate to light/dark/full-dark and invalid values use a safe default', () => {
+  assert.equal(normalizeTheme('obsidian'), 'black');
+  assert.equal(normalizeTheme('nord'), 'dark');
+  assert.equal(normalizeTheme('midnight'), 'dark');
+  assert.equal(normalizeTheme('royal'), 'dark');
+  assert.equal(normalizeTheme('sepia'), 'light');
+  assert.equal(normalizeTheme('alabaster'), 'light');
+  assert.equal(normalizeTheme('paper'), 'light');
+  assert.equal(normalizeTheme('bad'), 'dark');
+  assert.equal(normalizeTheme(null), 'dark');
 });

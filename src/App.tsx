@@ -22,7 +22,7 @@ import {
   getFirebaseAuth, observeAuth, signInWithGoogle, logout, retryAccountSync, preflightGoogleAuth, googleAuthDiagnostic,
   createFolder, renameFolder, deleteFolderRecursive, getAllFolders, moveFolder, Folder,
   getAllNotes, createNote, updateNote, deleteNote, Note, NoteSection,
-  uploadImageFile, saveNoteDirect, saveFolderDirect, registerUserDoc, getTimestampMs, saveVaultMediaToFirestore
+  uploadImageFile, saveNoteDirect, saveFolderDirect, registerUserDoc, getTimestampMs, saveVaultMediaToFirestore, checkMediaHealth, fetchVaultMediaFromFirestore
 } from './firebase';
 import {
   loadGuestFolders, saveGuestFolders, loadGuestNotes, saveGuestNotes, resetGuestDemoData,
@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import TurndownService from 'turndown';
-import { getLocalMediaBlob, getAllLocalMediaBlobs, registerLocalImage, resolveLocalImage, sanitizeContentImages, getMediaCandidates, getPendingMediaWrites, subscribeMedia, compressImageFile } from './utils/mediaStore';
+import { getLocalMediaBlob, getAllLocalMediaBlobs, registerLocalImage, resolveLocalImage, sanitizeContentImages, getMediaCandidates, getPendingMediaWrites, subscribeMedia, compressImageFile, hydrateMedia } from './utils/mediaStore';
 
 // --- Custom UI Components ---
 
@@ -898,13 +898,15 @@ export default function App() {
       const saved = JSON.parse(localStorage.getItem('aetheria_settings') || '{}');
       return normalizeTheme(saved.theme);
     } catch {
-      return 'midnight';
+      return 'dark';
     }
   });
   const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', currentTheme);
+    const theme = THEMES.find(item => item.id === currentTheme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme?.color || '#131314');
   }, [currentTheme]);
 
   const applyTheme = (themeId: ThemeId) => {
@@ -1068,6 +1070,14 @@ export default function App() {
       if (!isCurrent()) return;
       setAllFolders(allFolderData);
       setAllVaultNotes(allNotes);
+      // Repair/report pass: hydrate what exists locally or in the cloud, and
+      // surface (never hide) references that resolve nowhere.
+      for (const note of allNotes) for (const section of note.sections) void hydrateMedia(section.content).catch(() => undefined);
+      void checkMediaHealth(uid, allNotes).then(health => {
+        if (!isCurrent()) return;
+        if (health.missing.length) setCloudWarning(`${health.missing.length} image(s) in your notes could not be found in this browser or in your cloud backup. The notes and their layout are intact; re-insert those images to restore them.`);
+        else if (health.pending.length) setCloudWarning(`${health.pending.length} image upload(s) are still pending. Use Retry cloud sync when connected.`);
+      }).catch(() => undefined);
       // Refresh a stale cached deep link only after flushing any intervening edit.
       const open = selectedNoteRef.current;
       if (open) {
@@ -1446,13 +1456,16 @@ export default function App() {
       await saveNoteDirect(uid, { ...n, id: mapId('notes', n.id), folderId: map[`folders:${n.folderId}`] || 'general', isLocalOnly: false, isImported: false });
       claim('notes', n.id);
     }
-    // Migrate all local media blobs from IndexedDB into the user's Firestore media vault
-    try {
-      const localBlobs = await getAllLocalMediaBlobs();
-      for (const item of localBlobs) {
-        await saveVaultMediaToFirestore(uid, item.id, item.blob, item.filename).catch(() => undefined);
-      }
-    } catch {}
+    // Migrate all local media blobs from IndexedDB into the user's cloud media vault.
+    // Failures are reported, never silently swallowed: an unreported failure
+    // would look like a successful migration while images stayed local-only.
+    const localBlobs = await getAllLocalMediaBlobs().catch(() => []);
+    let failedMedia = 0;
+    for (const item of localBlobs) {
+      try { await saveVaultMediaToFirestore(uid, item.id, item.blob, item.filename); }
+      catch { failedMedia++; }
+    }
+    if (failedMedia) showToast(`${failedMedia} image(s) could not be copied to the cloud yet. They remain safe in this browser; use Retry cloud sync when connected.`, 'error');
   };
 
   const handleSignIn = async () => {
@@ -2069,7 +2082,7 @@ export default function App() {
     try {
       const current = loadGuestNotes(user?.uid);
       const notes = exportTarget.notes.map(note => current.find(item => item.id === note.id) || note).map(note => exportCurrentOnly && exportTarget.sectionIndex !== undefined ? { ...note, sections: [note.sections[exportTarget.sectionIndex]] } : note);
-      const backup = await createVaultBackup(notes, exportTarget.folders, getLocalMediaBlob);
+      const backup = await createVaultBackup(notes, exportTarget.folders, async id => (await getLocalMediaBlob(id)) || (user ? fetchVaultMediaFromFirestore(user.uid, id) : null));
       const content = format === 'json' ? JSON.stringify(backup) : format === 'md' ? backupMarkdown(backup) : backupHtml(backup);
       if (new TextEncoder().encode(content).length > 50 * 1024 * 1024) throw new Error('Export exceeds 50 MB. Export fewer notes or individual sections.');
       downloadFile(content, `${exportTarget.title}.${format}`, format === 'json' ? 'application/json' : format === 'md' ? 'text/markdown' : 'text/html');
@@ -3634,6 +3647,8 @@ const MarkdownPreview = React.memo(({ content, isEditing, searchQuery = '', sear
     };
   }, [onSelectMedia]);
 
+  useEffect(() => { void hydrateMedia(content).catch(() => undefined); }, [content]);
+
   useEffect(() => {
     if (isEditing) return;
     const container = renderRef.current;
@@ -3905,7 +3920,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
       targetIdx = lines.findIndex(l => isMediaLine(l) && candidates.some(c => c && l.includes(c)));
     }
     if (targetIdx === -1) targetIdx = fallbackIdx;
-    if (targetIdx < 0 || targetIdx >= lines.length) return;
+    if (targetIdx < 0 || targetIdx >= lines.length || !isMediaLine(lines[targetIdx])) return;
 
     const line = lines[targetIdx];
     const alignMatch = line.match(/@@(left|center|right)[:-](small|medium|large|full)@@/i);
@@ -4140,14 +4155,14 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
         };
       }
     } catch {}
-    return { fontSize: 18, zoom: 100, fontFamily: 'var(--font-gemini)', fontWeight: 400, theme: 'midnight' };
+    return { fontSize: 18, zoom: 100, fontFamily: 'var(--font-gemini)', fontWeight: 400, theme: 'dark' };
   });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     writeLocalValue('aetheria_settings', JSON.stringify(settings));
-    document.documentElement.setAttribute('data-theme', settings.theme || 'midnight');
+    document.documentElement.setAttribute('data-theme', settings.theme || 'dark');
   }, [settings]);
 
   // Section Selector Helper
@@ -4361,10 +4376,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
       }
     }
 
-    // 2. Fallback candidate URL targeting
+    // 2. Fallback: delete only the first matching media line. (The previous
+    // filter removed *every* line containing a candidate substring, which
+    // could delete unrelated media/text sharing a URL fragment.)
     if (!deleted) {
       const candidates = getMediaCandidates(cleanId);
-      updatedLines = lines.filter(line => !candidates.some(c => c && line.includes(c)));
+      const idx = lines.findIndex(line => isMediaLine(line) && candidates.some(c => c && line.includes(c)));
+      if (idx !== -1) { updatedLines.splice(idx, 1); deleted = true; }
     }
 
     const updatedContent = updatedLines.join('\n');
@@ -4422,16 +4440,9 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
       }
     }
 
-    // 3. Fallback: match first media line in section
-    if (!found) {
-      for (let i = 0; i < lines.length; i++) {
-        if (isMediaLine(lines[i])) {
-          lines[i] = updateMediaMarker(lines[i], newAlign, newSize);
-          found = true;
-          break;
-        }
-      }
-    }
+    // 3. No guessing: an unidentified target must not rewrite some other
+    // media item's layout marker.
+    if (!found) return;
 
     const updatedContent = lines.join('\n');
 
@@ -6340,7 +6351,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                         onClick={() => { setSettings({ ...settings, theme: t.id }); onThemeChange(t.id); }}
                         className={cn(
                           "p-2.5 rounded-xl border text-left transition-all flex items-center gap-2.5",
-                          (settings.theme || 'midnight') === t.id
+                          (settings.theme || 'dark') === t.id
                             ? "border-accent bg-accent/15 shadow-sm"
                             : "border-white/10 bg-white/5 hover:bg-white/10"
                         )}
@@ -6350,7 +6361,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
                           style={{ backgroundColor: t.accent }}
                         />
                         <div className="min-w-0">
-                          <p className={cn("text-xs font-semibold truncate", (settings.theme || 'midnight') === t.id ? "text-accent" : "text-text")}>
+                          <p className={cn("text-xs font-semibold truncate", (settings.theme || 'dark') === t.id ? "text-accent" : "text-text")}>
                             {t.name}
                           </p>
                           <p className="text-[10px] text-text/40 truncate">{t.desc}</p>

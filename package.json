@@ -62,6 +62,16 @@
     "@grpc/grpc-js": "^1.14.6",
     "workbox-build": {
       "glob": "^13.0.6"
+    },
+    "qs": "^6.16.1",
+    "tsx": {
+      "esbuild": "^0.28.2"
+    },
+    "ajv": {
+      "fast-uri": "^4.2.2"
+    },
+    "@babel/preset-env": {
+      "@babel/plugin-transform-modules-systemjs": "8.0.1"
     }
   }
 }

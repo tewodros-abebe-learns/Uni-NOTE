@@ -169,8 +169,16 @@ export async function registerLocalBlob(blob: Blob, filename?: string): Promise<
   pendingMediaWrites++;
   listeners.forEach(listener => listener());
   try {
-    const hash = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
-    const digest = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    // Content-addressed ID when WebCrypto is available (secure contexts).
+    // Some mobile web views lack crypto.subtle; a unique ID is far better
+    // than failing the whole insert on a phone.
+    let digest: string;
+    try {
+      const hash = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+      digest = [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+      digest = `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`.padEnd(64, '0');
+    }
     const extension = blob.type.split('/')[1].replace(/[^a-z0-9]/gi, '');
     const id = `media_${digest}.${extension}`;
     await putBlob(id, blob, filename);
@@ -287,6 +295,14 @@ export async function compressImageFile(file: File | Blob, maxWidth = 1920, maxH
           height = maxHeight;
         }
       }
+      // Hard pixel budget: phone canvases/GPU memory can kill the tab when
+      // decoding or drawing very large camera photos.
+      const MAX_PIXELS = 8_000_000;
+      if (width * height > MAX_PIXELS) {
+        const scale = Math.sqrt(MAX_PIXELS / (width * height));
+        width = Math.max(1, Math.floor(width * scale));
+        height = Math.max(1, Math.floor(height * scale));
+      }
 
       const canvas = document.createElement('canvas');
       canvas.width = width;
@@ -377,6 +393,6 @@ export const getMediaCandidates = (cleanId: string): string[] => {
   return [...candidates].filter(candidate => candidate.length > 2);
 };
 
-// Stage 2 is local-first. Cloud bucket promotion is explicitly reserved for Stage 3.
+// Local-first media vault; cloud backup lives in Firestore (see firebase.ts).
 export const ensurePermanentImageUrl = registerLocalImage;
 export const migrateLocalMediaToPermanent = sanitizeContentImages;

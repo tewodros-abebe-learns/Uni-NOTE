@@ -3,11 +3,12 @@ import { createWriteQueue, mergeVersions, timestampMs, version } from './lib/clo
 import { readLocalValue, writeLocalValue } from './lib/localPersistence';
 import { setCloudWarning } from './lib/cloudStatus';
 import { getMediaReferences, promoteMediaContent } from './lib/mediaPromotion';
+import { isStandaloneDisplay } from './lib/pwa';
 import { authDiagnostic, isAuthorizedHostname } from './lib/authDiagnostics';
 import { canMoveFolder, collectFolderIds } from './lib/folderGraph';
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, Auth } from 'firebase/auth';
-import { runTransaction, getFirestore, initializeFirestore, doc, setDoc, deleteDoc, getDoc, collection, query, where, getDocs, onSnapshot, Firestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, User, Auth } from 'firebase/auth';
+import { runTransaction, getFirestore, initializeFirestore, doc, setDoc, deleteDoc, deleteField, getDoc, collection, query, where, getDocs, onSnapshot, Firestore } from 'firebase/firestore';
 import { getLocalMediaBlob, registerLocalBlob, sanitizeContentImages, blobToDataUrl, dataUrlToBlob, setCloudMediaFetcher } from './utils/mediaStore';
 import { loadGuestFolders, saveGuestFolders, loadGuestNotes, saveGuestNotes } from './demoData';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -81,7 +82,7 @@ export const uploadImageFile = async (userId: string, file: File | Blob, filenam
   catch { setCloudWarning('Image saved in this browser. Cloud upload is pending; use Retry cloud sync when connected.'); return id; }
 };
 
-export const googleAuthDiagnostic = () => authDiagnostic(typeof location === 'undefined' ? '' : location.hostname, firebaseConfig.projectId, firebaseConfig.storageBucket);
+export const googleAuthDiagnostic = () => authDiagnostic(typeof location === 'undefined' ? '' : location.hostname, firebaseConfig.projectId);
 let authorized: boolean | undefined;
 export const preflightGoogleAuth = async (): Promise<boolean | undefined> => {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return undefined;
@@ -94,9 +95,17 @@ export const preflightGoogleAuth = async (): Promise<boolean | undefined> => {
   return authorized;
 };
 
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (): Promise<User | null> => {
   try {
     if (authorized === false) throw Object.assign(new Error(googleAuthDiagnostic().message), { code: 'auth/unauthorized-domain' });
+    // Installed (standalone) apps cannot host auth popups reliably: on
+    // Android the popup opens outside the app and often never returns, and
+    // on iOS it can kill the standalone web view. Redirect flow is the
+    // supported path there; the result is collected on return.
+    if (isStandaloneDisplay()) {
+      await signInWithRedirect(getFirebaseAuth(), getGoogleProvider());
+      return null; // Page is navigating away; auth observer fires on return.
+    }
     const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
     return result.user;
   } catch (error: any) {
@@ -116,6 +125,17 @@ export const signInWithGoogle = async () => {
 export const logout = async () => {
   return signOut(getFirebaseAuth());
 };
+
+/** Collect the result of a redirect sign-in after returning to the app. */
+export async function completeRedirectSignIn(): Promise<{ user: User | null; error: string | null }> {
+  try {
+    const result = await getRedirectResult(getFirebaseAuth());
+    return { user: result?.user || null, error: null };
+  } catch (error: any) {
+    if (error?.code === 'auth/unauthorized-domain') return { user: null, error: googleAuthDiagnostic().message };
+    return { user: null, error: error?.message ? `Sign-in could not be completed: ${error.message}` : null };
+  }
+}
 
 export const registerUserDoc = async (userId: string, email: string, displayName?: string, photoURL?: string): Promise<boolean> => {
   if (!email) { console.warn('registerUserDoc skipped: signed-in user has no email.'); return false; }
@@ -304,6 +324,18 @@ export const saveFolderDirect = async (userId: string, folder: Folder): Promise<
   stageWrite(userId, 'folders', data);
   saveGuestFolders([...current.filter(f => f.id !== folder.id), data], userId);
   return withTimeout(commitStaged(userId, 'folders', data) as Promise<Folder>, 15000, 'saveFolderDirect');
+};
+
+/** Resurrect a trashed note. Normal saves can never override a tombstone
+ *  (by design), so restoration first removes the tombstone field itself,
+ *  then replays the note through the normal staged write path — which also
+ *  replaces any still-pending tombstone in the outbox for this note. */
+export const restoreDeletedNote = async (userId: string, note: Note): Promise<Note> => {
+  assertOwner(userId);
+  const clean: Note = { ...note, updatedAt: Date.now(), isLocalOnly: false, isImported: false };
+  delete (clean as any).deletedAt;
+  await withTimeout(setDoc(doc(getFirebaseDb(), `users/${userId}/notes`, clean.id), { ...clean, deletedAt: deleteField() }, { merge: true }), 15000, 'restoreDeletedNote');
+  return saveNoteDirect(userId, clean);
 };
 
 export const updateNote = async (userId: string, noteId: string, data: Partial<Note>): Promise<void> => {

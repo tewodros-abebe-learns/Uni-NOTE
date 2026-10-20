@@ -31,7 +31,10 @@ export function createAccountSync(deps: Dependencies) {
     deps.assertOwner(uid);
     const entries = pending(uid).filter(p => p.kind !== kind || p.data.id !== data.id);
     deps.write(key(uid), JSON.stringify([...entries, { kind, data }]));
-    warn(uid, 'Cloud changes pending. Your account copy is retained locally until confirmed.');
+    // Deliberately NO warning here: staging is the normal first step of every
+    // save, and warning at this point cried wolf on every keystroke-edit
+    // even when the commit confirmed a second later. The commit path warns
+    // only on actual failure, and clears the warning once nothing is pending.
   }
   function commit(uid: string, kind: AccountKind, original: AccountItem) {
     // Clone at submission, not when a queued task eventually starts.

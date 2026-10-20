@@ -22,6 +22,7 @@ export const observeAuth = callback => {
 };
 export const preflightGoogleAuth = async () => undefined;
 export const googleAuthDiagnostic = () => authDiagnostic(location.hostname, 'test-project');
+export const completeRedirectSignIn = async () => ({ user: null, error: null });
 export const signInWithGoogle = async () => { if (control.authError) throw Object.assign(new Error('Test auth failure'), { code: control.authError }); control.emit('alice'); return auth.currentUser; };
 export const logout = async () => control.emit(null);
 export const registerUserDoc = async () => true;
@@ -46,4 +47,5 @@ export const deleteNote = async () => undefined;
 export const deleteFolderRecursive = async () => undefined;
 export const getNote = async (uid, id) => loadGuestNotes(uid).find(n => n.id === id) || null;
 export const getFirebaseDb = () => { throw new Error('Live Firestore is forbidden in this test'); };
+export const restoreDeletedNote = async (uid, note) => saveNoteDirect(uid, note);
 export const uploadImageFile = async (_, file, name) => registerLocalBlob(file, name);

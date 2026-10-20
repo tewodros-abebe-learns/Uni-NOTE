@@ -4,6 +4,7 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import crypto from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,14 @@ async function startServer() {
   const app = express();
   const server = http.createServer(app);
   const PORT = 3000;
+
+  // Baseline security headers (parity with the Vercel deployment headers).
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("X-Frame-Options", "DENY");
+    next();
+  });
 
   app.use(express.json({ limit: "50mb" }));
 
@@ -47,7 +56,9 @@ async function startServer() {
         return res.status(404).json({ error: "Uploads are disabled. Set ENABLE_LOCAL_UPLOADS=true to enable this self-hosted endpoint." });
       }
       const expectedToken = process.env.UPLOAD_TOKEN;
-      if (expectedToken && req.header("x-upload-token") !== expectedToken) {
+      const provided = Buffer.from(req.header("x-upload-token") || "");
+      const expected = Buffer.from(expectedToken || "");
+      if (expectedToken && (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected))) {
         return res.status(401).json({ error: "Unauthorized" });
       }
       const { image, filename } = req.body;

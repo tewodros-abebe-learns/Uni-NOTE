@@ -807,3 +807,13 @@ mark.search-match-active {
 
 .search-match { background: #fde047; color: #18202c; border-radius: 2px; }
 .search-match-active { background: #fb923c; outline: 2px solid #c2410c; }
+
+/* Installed-app stability on phones: honour reduced motion and soften the
+   most GPU-expensive blur on small screens (a common mobile-webview crash
+   contributor), without changing the desktop look. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+@media (max-width: 640px) {
+  .backdrop-blur-xl, .backdrop-blur-md { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+}

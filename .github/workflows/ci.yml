@@ -21,3 +21,26 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm audit --audit-level=low
+
+  browser:
+    name: Browser regression (production build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - id: chrome
+        uses: browser-actions/setup-chrome@v1
+      - name: Serve production build and run browser suites
+        env:
+          BROWSER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: |
+          NODE_ENV=production npm start &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/api/health && break || sleep 1; done
+          npm run test:browser
+          npm run test:stage2:browser
+          npm run test:stage4:browser

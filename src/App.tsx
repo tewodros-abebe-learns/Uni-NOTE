@@ -4,6 +4,7 @@ import { planVaultImport, createVaultBackup, backupMarkdown, downloadFile } from
 import { backupHtml } from './lib/htmlExport';
 import { getPwaState, subscribePwa, installPwa, applyPwaUpdate } from './lib/pwa';
 import { getMediaReferences } from './lib/mediaPromotion';
+import { listTrash, addToTrash, removeFromTrash, takeFromTrash, type TrashEntry } from './lib/trash';
 import { authTransitionGuard } from './lib/cloudSync';
 import { getCloudWarning, subscribeCloudStatus, setCloudWarning } from './lib/cloudStatus';
 import { readLocalValue } from './lib/localPersistence';
@@ -19,10 +20,10 @@ import { renderContent, getMediaLayoutStyles } from './lib/renderContent';
 import { canMoveFolder, getFolderAncestors, collectFolderIds } from './lib/folderGraph';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, ChangeEvent, ClipboardEvent } from 'react';
 import {
-  getFirebaseAuth, observeAuth, signInWithGoogle, logout, retryAccountSync, preflightGoogleAuth, googleAuthDiagnostic,
+  getFirebaseAuth, observeAuth, signInWithGoogle, completeRedirectSignIn, logout, retryAccountSync, preflightGoogleAuth, googleAuthDiagnostic,
   createFolder, renameFolder, deleteFolderRecursive, getAllFolders, moveFolder, Folder,
   getAllNotes, createNote, updateNote, deleteNote, Note, NoteSection,
-  uploadImageFile, saveNoteDirect, saveFolderDirect, registerUserDoc, getTimestampMs, saveVaultMediaToFirestore, checkMediaHealth, fetchVaultMediaFromFirestore
+  uploadImageFile, saveNoteDirect, saveFolderDirect, registerUserDoc, getTimestampMs, saveVaultMediaToFirestore, checkMediaHealth, fetchVaultMediaFromFirestore, pendingMediaUploads, restoreDeletedNote
 } from './firebase';
 import {
   loadGuestFolders, saveGuestFolders, loadGuestNotes, saveGuestNotes, resetGuestDemoData,
@@ -42,806 +43,11 @@ import {
   Layers, Pencil
 } from 'lucide-react';
 import { cn } from './lib/utils';
+import { ConfirmModal, PromptModal, YouTubeModal, ImageModal } from './components/modals';
 import TurndownService from 'turndown';
 import { getLocalMediaBlob, getAllLocalMediaBlobs, registerLocalImage, resolveLocalImage, sanitizeContentImages, getMediaCandidates, getPendingMediaWrites, subscribeMedia, compressImageFile, hydrateMedia } from './utils/mediaStore';
 
 // --- Custom UI Components ---
-
-interface ConfirmModalProps {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  variant?: 'danger' | 'primary';
-}
-
-const ConfirmModal = ({ isOpen, title, message, confirmLabel = "Delete", cancelLabel = "Cancel", onConfirm, onCancel, variant = 'danger' }: ConfirmModalProps) => (
-  <AnimatePresence>
-    {isOpen && (
-      <div
-        role="dialog" aria-modal="true" aria-label={title}
-        className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-        onClick={onCancel}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-md bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button onClick={onCancel} className="absolute top-4 right-4 text-text/40 hover:text-text"><X className="w-5 h-5" /></button>
-          <h3 className="text-xl font-bold text-text mb-2">{title}</h3>
-          <p className="text-text/60 mb-8">{message}</p>
-          <div className="flex justify-end gap-3">
-            <button onClick={onCancel} className="px-6 py-2 rounded-xl hover:bg-white/5 transition-colors text-sm font-medium">{cancelLabel}</button>
-            <button
-              onClick={onConfirm}
-              className={cn(
-                "px-6 py-2 rounded-xl transition-colors text-sm font-medium",
-                variant === 'danger' ? "bg-red-500 text-text hover:bg-red-600" : "bg-accent text-on-accent hover:bg-accent/90"
-              )}
-            >
-              {confirmLabel}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    )}
-  </AnimatePresence>
-);
-
-interface PromptModalProps {
-  isOpen: boolean;
-  title: string;
-  defaultValue: string;
-  onConfirm: (value: string) => void;
-  onCancel: () => void;
-}
-
-const PromptModal = ({ isOpen, title, defaultValue, onConfirm, onCancel }: PromptModalProps) => {
-  const [value, setValue] = useState(defaultValue);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setValue(defaultValue);
-  }, [defaultValue, isOpen]);
-
-  const handleSubmit = (e?: React.SyntheticEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    const finalVal = (value || inputRef.current?.value || '').trim();
-    if (finalVal) {
-      onConfirm(finalVal);
-    } else {
-      onCancel();
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div
-          role="dialog" aria-modal="true" aria-label={title}
-        className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              onCancel();
-            }
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-md bg-surface border border-white/10 rounded-2xl p-6 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={onCancel}
-              className="absolute top-4 right-4 text-text/40 hover:text-text cursor-pointer p-1 rounded-lg hover:bg-white/5 transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <h3 className="text-xl font-bold text-text mb-6">{title}</h3>
-            <form
-
-              onSubmit={handleSubmit}
-              className="space-y-6"
-            >
-              <input
-                ref={inputRef}
-                autoFocus
-                type="text"
-                enterKeyHint="done"
-                autoComplete="off"
-                autoCorrect="off"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.keyCode === 13) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSubmit();
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    onCancel();
-                  }
-                }}
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-accent transition-colors text-text text-base"
-              />
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-6 py-2 rounded-xl hover:bg-white/5 transition-colors text-sm font-medium text-neutral-300 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSubmit();
-                  }}
-                  className="px-6 py-2 rounded-xl bg-accent text-on-accent hover:bg-accent/90 transition-colors text-sm font-bold cursor-pointer active:scale-95 shadow-md"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-// YouTube Extraction Helper
-
-interface YouTubeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onInsert: (url: string, align: 'left' | 'center' | 'right', size: 'small' | 'medium' | 'large' | 'full') => void;
-}
-
-const YouTubeModal = ({ isOpen, onClose, onInsert }: YouTubeModalProps) => {
-  const [url, setUrl] = useState('');
-  const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
-  const [size, setSize] = useState<'small' | 'medium' | 'large' | 'full'>('medium');
-
-  useEffect(() => {
-    if (isOpen) {
-      setUrl('');
-      setAlign('center');
-      setSize('medium');
-    }
-  }, [isOpen]);
-
-  const extracted = extractYouTubeId(url);
-  const isValid = Boolean(extracted);
-
-  const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!isValid || !extracted) return;
-    onInsert(url, align, size);
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg bg-surface border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={onClose}
-              className="absolute top-5 right-5 text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-white/5"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
-                <Youtube className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-text">Embed YouTube Video</h3>
-                <p className="text-xs text-text/50">Stream videos directly inside your note with custom resizing</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                  YouTube Video Link
-                </label>
-                <div className="relative">
-                  <input
-                    autoFocus
-                    type="text"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                    className={cn(
-                      "w-full bg-white/5 border rounded-2xl px-4 py-3 text-sm outline-none transition-all placeholder:text-text/30",
-                      url && isValid && "border-green-500/50 focus:border-green-500",
-                      url && !isValid && "border-red-500/50 focus:border-red-500",
-                      !url && "border-white/10 focus:border-accent"
-                    )}
-                  />
-                  {url && (
-                    <div className="absolute right-3 top-3.5 flex items-center">
-                      {isValid ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-400" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-red-400" />
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {url && !isValid && (
-                  <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" /> Please enter a valid YouTube video link, shorts, or 11-character video ID.
-                  </p>
-                )}
-                {url && isValid && extracted && (
-                  <p className="text-xs text-green-400 mt-1.5 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Valid YouTube video ready to insert.
-                  </p>
-                )}
-              </div>
-
-              {/* Video Thumbnail Preview Card */}
-              {extracted && (
-                <div className="relative aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black/60 group shadow-lg">
-                  <img
-                    src={`https://img.youtube.com/vi/${extracted.videoId}/mqdefault.jpg`}
-                    alt="Video thumbnail"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-red-600/90 text-text flex items-center justify-center shadow-xl">
-                      <Play className="w-6 h-6 fill-white ml-0.5" />
-                    </div>
-                  </div>
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] text-text/90 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
-                    <span className="font-mono">ID: {extracted.videoId}</span>
-                    {extracted.startTime ? (
-                      <span className="text-accent font-medium">Starts @ {extracted.startTime}s</span>
-                    ) : (
-                      <span className="text-text/60">Full Video</span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Size Selector */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                  Player Size
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSize('small')}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex flex-col items-center gap-1",
-                      size === 'small'
-                        ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                        : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <span>Small</span>
-                    <span className={cn("text-[10px]", size === 'small' ? "text-on-accent/70" : "text-text/40")}>35% width</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSize('medium')}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex flex-col items-center gap-1",
-                      size === 'medium'
-                        ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                        : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <span>Medium</span>
-                    <span className={cn("text-[10px]", size === 'medium' ? "text-on-accent/70" : "text-text/40")}>65% width</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSize('large')}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex flex-col items-center gap-1",
-                      size === 'large'
-                        ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                        : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <span>Large</span>
-                    <span className={cn("text-[10px]", size === 'large' ? "text-on-accent/70" : "text-text/40")}>85% width</span>
-                  </button>
-                  <button type="button" onClick={() => setSize('full')} className={cn("py-2.5 px-3 rounded-xl border text-xs", size === 'full' ? "bg-accent text-on-accent" : "bg-white/5 text-text")}><span>Full</span><br /><span>100% width</span></button>
-                </div>
-              </div>
-
-              {/* Alignment Selector */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                  Alignment
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAlign('left')}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                      align === 'left'
-                        ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                        : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <AlignLeft className="w-4 h-4" /> Left
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAlign('center')}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                      align === 'center'
-                        ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                        : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <AlignCenter className="w-4 h-4" /> Center
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAlign('right')}
-                    className={cn(
-                      "py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                      align === 'right'
-                        ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                        : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <AlignRight className="w-4 h-4" /> Right
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl hover:bg-white/5 text-text/70 hover:text-text transition-colors text-sm font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!isValid}
-                  className="px-6 py-2.5 rounded-xl bg-accent text-on-accent hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-bold flex items-center gap-2 shadow-lg shadow-accent/10"
-                >
-                  <Youtube className="w-4 h-4" /> Insert Video
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-interface ImageModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  userId: string;
-  onInsert: (url: string, alt: string, align: 'left' | 'center' | 'right', size: 'small' | 'medium' | 'large' | 'full') => Promise<boolean> | boolean | void;
-}
-
-export const cleanImageUrl = (input: string): string => {
-  if (!input) return '';
-  let trimmed = input.trim();
-  // Strip enclosing quotes
-  trimmed = trimmed.replace(/^["']|["']$/g, '');
-  // Extract URL from markdown format ![alt](url) if pasted
-  const mdMatch = trimmed.match(/!\[.*?\]\(([^()]+)\)/i);
-  if (mdMatch) return mdMatch[1].trim();
-  // Extract URL from HTML format <img src="url"> if pasted
-  const htmlMatch = trimmed.match(/<img[^>]+src=["']([^"']+)["']/i);
-  if (htmlMatch) return htmlMatch[1].trim();
-  // Auto prefix https:// if domain starts with www. or domain path
-  if (/^(www\.|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\/)/i.test(trimmed) && !trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:') && !trimmed.startsWith('/')) {
-    return `https://${trimmed}`;
-  }
-  return trimmed;
-};
-
-const ImageModal = ({ isOpen, onClose, userId, onInsert }: ImageModalProps) => {
-  const [mode, setMode] = useState<'upload' | 'url'>('upload');
-  const [url, setUrl] = useState('');
-  const [alt, setAlt] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
-  const [size, setSize] = useState<'small' | 'medium' | 'large' | 'full'>('medium');
-  const [isUploading, setIsUploading] = useState(false);
-  const [imgError, setImgError] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setUrl('');
-      setAlt('');
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setAlign('center');
-      setSize('medium');
-      setIsUploading(false);
-      setImgError(false);
-      setUploadError(null);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    setImgError(false);
-    setUploadError(null);
-  }, [url]);
-
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-    setUploadError(null);
-    if (!alt) {
-      setAlt(file.name.replace(/\.[^/.]+$/, ""));
-    }
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-  };
-
-  const handleUrlPaste = (e: React.ClipboardEvent) => {
-    const clipboardFiles = e.clipboardData?.files;
-    if (clipboardFiles && clipboardFiles.length > 0) {
-      const file = clipboardFiles[0];
-      if (file.type.startsWith('image/')) {
-        e.preventDefault();
-        setMode('upload');
-        handleFileSelect(file);
-        return;
-      }
-    }
-
-    const pastedText = e.clipboardData?.getData('text');
-    if (pastedText) {
-      const cleaned = cleanImageUrl(pastedText);
-      if (cleaned) {
-        e.preventDefault();
-        setUrl(cleaned);
-      }
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('image/')) {
-        handleFileSelect(file);
-      }
-    }
-  };
-
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setUploadError(null);
-    if (mode === 'url') {
-      const finalUrl = cleanImageUrl(url);
-      if (!finalUrl) return;
-      setIsUploading(true);
-      try {
-        const ok = await onInsert(finalUrl, alt.trim() || 'Image', align, size);
-        if (ok !== false) onClose();
-        else setUploadError('The image could not be inserted. It has not been added to the note — see the message above and try again.');
-      } catch (err: any) {
-        setUploadError(err?.message || 'The image could not be inserted. Please try again.');
-      } finally { setIsUploading(false); }
-    } else {
-      if (!selectedFile) return;
-      setIsUploading(true);
-      try {
-        const fileToUpload = await compressImageFile(selectedFile);
-        const uploadedUrl = await uploadImageFile(userId, fileToUpload, selectedFile.name);
-        const ok = await onInsert(uploadedUrl, alt.trim() || selectedFile.name.replace(/\.[^/.]+$/, ""), align, size);
-        if (ok !== false) onClose();
-        else setUploadError('The image could not be inserted. It has not been added to the note — see the message above and try again.');
-      } catch (err: any) {
-        setUploadError(err?.message || "Failed to upload image. Please try again.");
-      } finally {
-        setIsUploading(false);
-      }
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-lg bg-surface border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={onClose}
-              className="absolute top-5 right-5 text-text/40 hover:text-text transition-colors p-1 rounded-lg hover:bg-white/5"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <ImageIcon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-text">Insert Image</h3>
-                <p className="text-xs text-text/50">Upload or link images cleanly with customizable sizing</p>
-              </div>
-            </div>
-
-            {/* Mode Switcher */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 rounded-2xl border border-white/10 mb-4">
-              <button
-                type="button"
-                onClick={() => setMode('upload')}
-                className={cn(
-                  "py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                  mode === 'upload' ? "bg-accent text-on-accent shadow-md" : "text-text/60 hover:text-text"
-                )}
-              >
-                <Upload className="w-3.5 h-3.5" /> Upload File
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('url')}
-                className={cn(
-                  "py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                  mode === 'url' ? "bg-accent text-on-accent shadow-md" : "text-text/60 hover:text-text"
-                )}
-              >
-                <FileText className="w-3.5 h-3.5" /> Web Link
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {mode === 'upload' ? (
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) handleFileSelect(e.target.files[0]);
-                    }}
-                    className="hidden"
-                  />
-                  {!selectedFile ? (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={handleDrop}
-                      className="border-2 border-dashed border-white/10 hover:border-accent/50 rounded-2xl p-6 text-center cursor-pointer transition-all hover:bg-white/5 flex flex-col items-center justify-center gap-2"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-text/40">
-                        <Upload className="w-5 h-5" />
-                      </div>
-                      <p className="text-sm font-medium text-text">Click or drag & drop image here</p>
-                      <p className="text-xs text-text/40">Supports PNG, JPG, WebP, GIF, SVG</p>
-                    </div>
-                  ) : (
-                    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 p-2 flex items-center gap-3">
-                      {previewUrl && (
-                        <img src={previewUrl} alt="Preview" className="w-16 h-16 object-cover rounded-xl border border-white/10 shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className="text-xs font-medium text-text truncate">{selectedFile.name}</p>
-                        <p className="text-[11px] text-text/40">{(selectedFile.size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setSelectedFile(null); setPreviewUrl(null); }}
-                        className="p-1.5 rounded-lg hover:bg-white/10 text-text/40 hover:text-red-400 transition-colors mr-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                    Image URL
-                  </label>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    onPaste={handleUrlPaste}
-                    placeholder="Paste image link or https://example.com/image.png"
-                    className="w-full bg-white/5 border border-white/10 focus:border-accent rounded-2xl px-4 py-3 text-sm outline-none transition-all placeholder:text-text/30 text-text"
-                  />
-                  {url.trim() !== '' && (
-                    <div className="mt-3 relative rounded-2xl overflow-hidden border border-white/10 bg-black/50 p-2 text-center min-h-[100px] flex flex-col items-center justify-center">
-                      {!imgError ? (
-                        <img
-                          key={cleanImageUrl(url)}
-                          src={resolveLocalImage(cleanImageUrl(url))}
-                          alt={alt || "Image preview"}
-                          className="max-h-40 w-auto object-contain rounded-xl shadow-md"
-                          onError={() => setImgError(true)}
-                        />
-                      ) : (
-                        <div className="p-3 text-xs text-amber-400/90 flex flex-col items-center gap-1">
-                          <AlertCircle className="w-5 h-5 text-amber-400 mb-1" />
-                          <span>Preview blocked by host CORS policy</span>
-                          <span className="text-[10px] text-text/40">The URL is stored and will be inserted directly into your note</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                  Alt / Caption (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={alt}
-                  onChange={(e) => setAlt(e.target.value)}
-                  placeholder="Descriptive label for the image"
-                  className="w-full bg-white/5 border border-white/10 focus:border-accent rounded-2xl px-4 py-2.5 text-sm outline-none transition-all placeholder:text-text/30"
-                />
-              </div>
-
-              {/* Sizing Presets */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                  Display Size
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['small', 'medium', 'large', 'full'] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setSize(s)}
-                      className={cn(
-                        "py-2 px-3 rounded-xl border text-xs font-semibold transition-all flex flex-col items-center gap-0.5",
-                        size === s
-                          ? "bg-accent text-on-accent border-accent shadow-md shadow-accent/10"
-                          : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                      )}
-                    >
-                      <span className="capitalize">{s}</span>
-                      <span className={cn("text-[10px]", size === s ? "text-on-accent/70" : "text-text/40")}>
-                        {s === 'small' ? '35%' : s === 'medium' ? '65%' : s === 'large' ? '85%' : '100%'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Alignment Presets */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-text/60 mb-2">
-                  Alignment
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAlign('left')}
-                    className={cn(
-                      "py-2 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                      align === 'left' ? "bg-accent text-on-accent border-accent" : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <AlignLeft className="w-4 h-4" /> Left
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAlign('center')}
-                    className={cn(
-                      "py-2 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                      align === 'center' ? "bg-accent text-on-accent border-accent" : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <AlignCenter className="w-4 h-4" /> Center
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAlign('right')}
-                    className={cn(
-                      "py-2 px-3 rounded-xl border text-xs font-semibold transition-all flex items-center justify-center gap-2",
-                      align === 'right' ? "bg-accent text-on-accent border-accent" : "bg-white/5 border-white/10 text-text/70 hover:bg-white/10 hover:text-text"
-                    )}
-                  >
-                    <AlignRight className="w-4 h-4" /> Right
-                  </button>
-                </div>
-              </div>
-
-              {uploadError && (
-                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                  <span>{uploadError}</span>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl hover:bg-white/5 text-text/70 hover:text-text transition-colors text-sm font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={(mode === 'upload' && !selectedFile) || (mode === 'url' && !url.trim()) || isUploading}
-                  className="px-6 py-2.5 rounded-xl bg-accent text-on-accent hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-bold flex items-center gap-2 shadow-lg shadow-accent/10"
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon className="w-4 h-4" /> Insert Image
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-// Media Layout Helper
-
 const DEFAULT_AVATAR = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%23f1f5f9"/><rect x="22" y="24" width="22" height="18" rx="2" fill="%23cbd5e1" opacity="0.6"/><path d="M26 30h14M26 34h10" stroke="%2394a3b8" stroke-width="1.5" stroke-linecap="round"/><circle cx="50" cy="38" r="15" fill="%23fcd34d"/><path d="M37 32c0-8 6-14 13-14s13 4 13 10c0 4-2 6-4 8-1 0-3-4-8-4s-8 3-9 4c-3-2-5-3-5-4z" fill="%231e293b"/><circle cx="45" cy="38" r="1.8" fill="%230f172a"/><circle cx="55" cy="38" r="1.8" fill="%230f172a"/><path d="M48 43c1 1 3 1 4 0" stroke="%23b45309" stroke-width="1.5" stroke-linecap="round"/><path d="M28 85c0-18 10-26 22-26s22 8 22 26z" fill="%232563eb"/><path d="M44 59l6 14 6-14" fill="%231d4ed8"/><rect x="34" y="68" width="32" height="20" rx="2.5" fill="%230f172a"/><circle cx="50" cy="77" r="1.8" fill="%23ffffff" opacity="0.9"/><path d="M30 88h40a2 2 0 0 1 2 2v1H28v-1a2 2 0 0 1 2-2z" fill="%2364748b"/></svg>`;
 
 const THEMES_LIST = THEMES;
@@ -1052,6 +258,31 @@ export default function App() {
 
   // UI State
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState<boolean>(false);
+  const [trashEntries, setTrashEntries] = useState<TrashEntry[]>([]);
+  useEffect(() => { if (isUserDrawerOpen) setTrashEntries(listTrash(user?.uid)); }, [isUserDrawerOpen, user]);
+  const handleRestoreNote = async (noteId: string) => {
+    const entry = takeFromTrash(user?.uid, noteId);
+    setTrashEntries(listTrash(user?.uid));
+    if (!entry) return;
+    const uid = user?.uid;
+    const foldersNow = loadGuestFolders(uid);
+    const safeFolderId = foldersNow.some(f => f.id === entry.note.folderId) ? entry.note.folderId : (foldersNow.find(f => !f.parentId)?.id || 'general');
+    const restored: Note = { ...entry.note, folderId: safeFolderId, deletedAt: undefined, updatedAt: Date.now() };
+    const current = loadGuestNotes(uid);
+    saveGuestNotes([restored, ...current.filter(n => n.id !== restored.id)], uid);
+    setAllVaultNotes(prev => [restored, ...prev.filter(n => n.id !== restored.id)]);
+    if (user) { try { await restoreDeletedNote(user.uid, restored); showToast('Note restored from Trash.', 'success'); } catch { showToast('Note restored in this browser, but cloud restore needs a connection — keep this tab open and retry while online, or it may reappear as deleted after a refresh.', 'error'); } }
+    else showToast('Note restored from Trash.', 'success');
+    void fetchItems(user?.uid ?? 'guest_user', currentParentId);
+  };
+  const handleEmptyTrashItem = (noteId: string) => { removeFromTrash(user?.uid, noteId); setTrashEntries(listTrash(user?.uid)); showToast('Removed from Trash permanently.', 'info'); };
+  const [mediaHealth, setMediaHealth] = useState<{ ready: number; missing: number; pending: number } | null>(null);
+  useEffect(() => {
+    if (!isUserDrawerOpen || !user) { if (!isUserDrawerOpen) setMediaHealth(null); return; }
+    let live = true;
+    void checkMediaHealth(user.uid, loadGuestNotes(user.uid)).then(h => { if (live) setMediaHealth({ ready: h.ready, missing: h.missing.length, pending: h.pending.length }); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [isUserDrawerOpen, user]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [movingFolder, setMovingFolder] = useState<Folder | null>(null);
   const [movingNote, setMovingNote] = useState<Note | null>(null);
@@ -1347,6 +578,7 @@ export default function App() {
     const guard = authTransitionGuard();
     let disposed = false;
     void preflightGoogleAuth();
+    void completeRedirectSignIn().then(({ error }) => { if (error && !disposed) setError(error); }).catch(() => undefined);
     const unsubscribe = observeAuth(async currentUser => {
       const stillCurrent = guard.change(currentUser?.uid || null);
       // Same-account refreshes update the User object only; never reset navigation/editor.
@@ -1480,7 +712,8 @@ export default function App() {
     setIsSigningIn(true);
     setError(null);
     try {
-      await signInWithGoogle(); // The observer is the sole owner of migration and account transitions.
+      const signedInUser = await signInWithGoogle(); // The observer is the sole owner of migration and account transitions.
+      if (!signedInUser) { showToast('Taking you to Google sign-in…', 'info'); return; } // Redirect flow (installed app): page is leaving.
       showToast('Signed in. Loading your account and syncing pending changes.', 'success');
     } catch (err: any) {
       if (err?.code === 'auth/popup-blocked') setError('Sign-in popup was blocked. Open Uni.Note in a new tab and retry.');
@@ -1726,10 +959,11 @@ export default function App() {
     setConfirmModal({
       isOpen: true,
       title: "Delete Folder",
-      message: "Are you sure you want to delete this folder and all its contents? This action cannot be undone.",
+      message: "Are you sure you want to delete this folder and all its contents? Notes inside will be kept in Trash for 30 days; the folder itself cannot be restored.",
       onConfirm: async () => {
         try {
           const folderIdsToDelete = collectFolderIds(allFolders, folderId);
+          for (const n of loadGuestNotes(user?.uid).filter(n => folderIdsToDelete.has(n.folderId))) addToTrash(user?.uid, n);
 
           if (currentParentId && folderIdsToDelete.has(currentParentId)) {
             setCurrentParentId(null);
@@ -1773,7 +1007,7 @@ export default function App() {
     setConfirmModal({
       isOpen: true,
       title: "Delete Note",
-      message: "Are you sure you want to delete this note? This action cannot be undone.",
+      message: "Are you sure you want to delete this note? It will be kept in Trash for 30 days.",
       onConfirm: async () => {
         try {
           setRecentNoteIds(prev => {
@@ -1784,6 +1018,8 @@ export default function App() {
             return updated;
           });
 
+          const doomed = loadGuestNotes(user?.uid).find(n => n.id === noteId);
+          if (doomed) addToTrash(user?.uid, doomed);
           if (!user) {
             const updated = loadGuestNotes().filter(n => n.id !== noteId);
             saveGuestNotes(updated);
@@ -2338,7 +1574,7 @@ export default function App() {
                 const url = URL.createObjectURL(new Blob([readLocalValue(`uninote_conflicts_${user.uid}`) || '[]'], { type: 'application/json' }));
                 const link = document.createElement('a'); link.href = url; link.download = 'uninote-conflict-backup.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
               }}>Download conflict backup</button>}
-              <a className="ml-3 underline" href={googleAuthDiagnostic().storageRulesUrl} target="_blank" rel="noopener noreferrer">Firebase Storage rules</a>
+              <a className="ml-3 underline" href="https://console.firebase.google.com/project/steadfast-rigging-g2w8r/firestore" target="_blank" rel="noopener noreferrer">Firestore console</a>
             </div>}
             {pendingMediaWrites > 0 && <div role="status" className="my-3 p-3 rounded-xl bg-accent/10 text-text text-sm">Saving image locally… Wait before closing this tab.</div>}
             {storageWarning && (
@@ -2518,6 +1754,47 @@ export default function App() {
                           setExportTarget({ notes: loadGuestNotes(user?.uid), folders: loadGuestFolders(user?.uid), title: 'Uni.Note-Vault' }); setIsUserDrawerOpen(false);
                         }}><Download className="inline w-4 h-4 mr-2" />Export all notes & folders</button>
                       </div>
+                      {/* Sync & Media health center */}
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-text/40 px-1">SYNC &amp; MEDIA</div>
+                        <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-text/60">Cloud sync</span>
+                            <span className="font-semibold text-text">{!user ? 'Local vault only' : isSyncing ? 'Syncing…' : syncStatus === 'synced' ? 'Synced ✓' : syncStatus === 'error' ? 'Needs attention' : 'Local copy safe'}</span>
+                          </div>
+                          {user && <div className="flex items-center justify-between">
+                            <span className="text-text/60">Images</span>
+                            <span className="font-semibold text-text">{mediaHealth ? `${mediaHealth.ready} backed up${mediaHealth.pending ? ` · ${mediaHealth.pending} pending` : ''}${mediaHealth.missing ? ` · ${mediaHealth.missing} missing` : ''}` : 'Checking…'}</span>
+                          </div>}
+                          {user && <div className="flex items-center justify-between">
+                            <span className="text-text/60">Uploads waiting</span>
+                            <span className="font-semibold text-text">{pendingMediaUploads(user.uid).length}</span>
+                          </div>}
+                          <div className="flex gap-2 pt-1">
+                            {user && <button onClick={() => { void handleSyncLocalToCloud(); }} className="flex-1 py-2 px-3 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-text transition-all cursor-pointer">Retry cloud sync</button>}
+                            <button onClick={() => { setExportTarget({ notes: loadGuestNotes(user?.uid), folders: loadGuestFolders(user?.uid), title: 'Uni.Note-Vault' }); setIsUserDrawerOpen(false); }} className="flex-1 py-2 px-3 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-text transition-all cursor-pointer">Download backup</button>
+                          </div>
+                          {mediaHealth?.missing ? <p className="text-xs text-amber-400">Some images exist nowhere (this browser or cloud). Notes and layouts are intact — re-insert those images to restore them.</p> : null}
+                        </div>
+                      </div>
+
+                      {/* Trash (30-day restore) */}
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-text/40 px-1">TRASH (30 DAYS)</div>
+                        <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm space-y-2">
+                          {!trashEntries.length && <p className="text-text/50 text-xs">Trash is empty. Deleted notes are kept here for 30 days.</p>}
+                          {trashEntries.map(entry => (
+                            <div key={entry.note.id} className="flex items-center justify-between gap-2">
+                              <span className="truncate text-text/80">{entry.note.title || 'Untitled'}</span>
+                              <span className="flex gap-1.5 shrink-0">
+                                <button onClick={() => { void handleRestoreNote(entry.note.id); }} className="py-1 px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-text cursor-pointer">Restore</button>
+                                <button onClick={() => handleEmptyTrashItem(entry.note.id)} className="py-1 px-2 rounded-lg bg-red-950/30 hover:bg-red-950/50 border border-red-900/30 text-xs font-semibold text-red-400 cursor-pointer">Delete forever</button>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                       {/* Preferences (Theme) */}
                       <div className="space-y-2">
                         <div className="text-[11px] font-bold uppercase tracking-wider text-text/40 px-1">
@@ -2721,15 +1998,15 @@ export default function App() {
                         <div className="absolute -bottom-24 left-0 w-[300px] h-[200px] bg-white/[0.02] blur-[100px] rounded-full pointer-events-none" />
 
                         <div className="relative z-10 max-w-2xl">
-                          <div className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400 mb-4">
+                          <div className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4">
                             ACADEMIC KNOWLEDGE BASE &amp; RESEARCH
                           </div>
 
-                          <h1 className="text-4xl sm:text-6xl font-extrabold text-text tracking-tight mb-4">
-                            Uni NOTE
+                          <h1 className="font-hero text-5xl sm:text-7xl font-bold text-text tracking-tight leading-[1.02] mb-5">
+                            Uni<span className="text-accent">.</span>Note
                           </h1>
 
-                          <p className="text-neutral-400 text-sm sm:text-base md:text-lg font-normal leading-relaxed mb-8 max-w-xl">
+                          <p className="text-muted text-base sm:text-lg md:text-xl font-normal leading-relaxed mb-8 max-w-xl">
                             A distraction-free thinking environment built for mathematical research, lecture notebooks, and organized thought.
                           </p>
 

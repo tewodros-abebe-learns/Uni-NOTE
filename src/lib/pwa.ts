@@ -6,8 +6,13 @@ const listeners = new Set<() => void>();
 const publish = (patch: Partial<typeof state>) => { state = { ...state, ...patch }; listeners.forEach(listener => listener()); };
 export const getPwaState = () => state;
 export const subscribePwa = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
+/** True when running as an installed app (home-screen / standalone display). */
+export function isStandaloneDisplay(): boolean {
+  try { return window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone); }
+  catch { return false; }
+}
 export function setupPwa() {
-  publish({ installed: window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone) });
+  publish({ installed: isStandaloneDisplay() });
   window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installEvent = event as InstallEvent; publish({ installAvailable: true }); });
   window.addEventListener('appinstalled', () => { installEvent = null; publish({ installed: true, installAvailable: false }); });
 }

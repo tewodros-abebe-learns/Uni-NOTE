@@ -18,7 +18,8 @@ export default defineConfig(() => {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: false,
-          navigateFallback: '/index.html'
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//]
         },
         devOptions: {
           enabled: false,
@@ -32,6 +33,10 @@ export default defineConfig(() => {
           theme_color: '#131314',
           background_color: '#131314',
           display: 'standalone',
+          display_override: ['standalone', 'minimal-ui'],
+          orientation: 'any',
+          lang: 'en', dir: 'ltr',
+          categories: ['education', 'productivity'],
           id: '/', start_url: '/', scope: '/',
           icons: [
             { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

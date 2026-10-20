@@ -20,10 +20,12 @@ export const subscribeMedia = (listener: () => void) => {
 export const isLocalMediaObjectUrl = (url: string) => [...resolved.values()].includes(url);
 const notify = () => { revision++; listeners.forEach(listener => listener()); };
 
-function openVault(): Promise<IDBDatabase> {
-  if (!database) database = new Promise<IDBDatabase>((resolve, reject) => {
+const DB_VERSION = 2;
+
+function openOnce(version?: number): Promise<IDBDatabase> {
+  return new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === 'undefined') return reject(new Error('IndexedDB is unavailable'));
-    const request = indexedDB.open(MEDIA_DATABASE, 1);
+    const request = version === undefined ? indexedDB.open(MEDIA_DATABASE) : indexedDB.open(MEDIA_DATABASE, version);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' });
     };
@@ -34,9 +36,33 @@ function openVault(): Promise<IDBDatabase> {
     };
     request.onerror = () => reject(request.error || new Error('Cannot open media vault'));
     request.onblocked = () => reject(new Error('Media vault upgrade is blocked by another tab'));
-  }).catch(error => { database = undefined; throw error; });
+  });
+}
+
+/**
+ * Self-healing vault open. Databases created by older builds can exist at
+ * version 1 WITHOUT the `media` object store; opening them plainly succeeds
+ * and every transaction then throws "object stores was not found". Opening
+ * at DB_VERSION runs the upgrade that creates the store, and if a database
+ * still lacks the store we close it and reopen at the next version, which
+ * forces the upgrade. No user should ever have to clear site data manually.
+ */
+function openVault(): Promise<IDBDatabase> {
+  if (!database) database = (async () => {
+    let db = await openOnce(DB_VERSION).catch(error =>
+      error?.name === 'VersionError' ? openOnce() : Promise.reject(error));
+    if (!db.objectStoreNames.contains(STORE)) {
+      const nextVersion = db.version + 1;
+      db.close();
+      db = await openOnce(nextVersion);
+    }
+    return db;
+  })().catch(error => { database = undefined; throw error; });
   return database;
 }
+
+const isMissingStore = (error: unknown) =>
+  (error as any)?.name === 'NotFoundError' || /object stores was not found/i.test((error as any)?.message || '');
 
 export function dataUrlToBlob(dataUrl: string): Blob {
   const match = dataUrl.match(/^data:(image\/[a-z\d.+-]+)(;base64)?,([\s\S]*)$/i);
@@ -61,14 +87,22 @@ export const setCloudMediaFetcher = (fetcher: CloudMediaFetcher | null) => {
 };
 
 async function putBlob(id: string, blob: Blob, filename?: string): Promise<void> {
-  const db = await openVault();
-  await new Promise<void>((resolve, reject) => {
-    const transaction = db.transaction(STORE, 'readwrite');
-    transaction.objectStore(STORE).put({ id, blob, filename, createdAt: Date.now() } satisfies MediaRecord);
-    // Request success is not durability: wait for transaction completion.
-    transaction.oncomplete = () => resolve();
-    transaction.onabort = transaction.onerror = () => reject(transaction.error || new Error('Media transaction failed'));
-  });
+  const write = async () => {
+    const db = await openVault();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE, 'readwrite');
+      transaction.objectStore(STORE).put({ id, blob, filename, createdAt: Date.now() } satisfies MediaRecord);
+      // Request success is not durability: wait for transaction completion.
+      transaction.oncomplete = () => resolve();
+      transaction.onabort = transaction.onerror = () => reject(transaction.error || new Error('Media transaction failed'));
+    });
+  };
+  try { await write(); }
+  catch (error) {
+    if (!isMissingStore(error)) throw error;
+    database = undefined; // Force the healing reopen, then retry exactly once.
+    await write();
+  }
   if (!resolved.has(id)) { resolved.set(id, URL.createObjectURL(blob)); notify(); }
 
   // Resilient localStorage fallback cache for quick hydration across sessions

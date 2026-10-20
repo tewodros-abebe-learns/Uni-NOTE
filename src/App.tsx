@@ -459,7 +459,7 @@ interface ImageModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
-  onInsert: (url: string, alt: string, align: 'left' | 'center' | 'right', size: 'small' | 'medium' | 'large' | 'full') => void;
+  onInsert: (url: string, alt: string, align: 'left' | 'center' | 'right', size: 'small' | 'medium' | 'large' | 'full') => Promise<boolean> | boolean | void;
 }
 
 export const cleanImageUrl = (input: string): string => {
@@ -560,16 +560,23 @@ const ImageModal = ({ isOpen, onClose, userId, onInsert }: ImageModalProps) => {
     if (mode === 'url') {
       const finalUrl = cleanImageUrl(url);
       if (!finalUrl) return;
-      onInsert(finalUrl, alt.trim() || 'Image', align, size);
-      onClose();
+      setIsUploading(true);
+      try {
+        const ok = await onInsert(finalUrl, alt.trim() || 'Image', align, size);
+        if (ok !== false) onClose();
+        else setUploadError('The image could not be inserted. It has not been added to the note — see the message above and try again.');
+      } catch (err: any) {
+        setUploadError(err?.message || 'The image could not be inserted. Please try again.');
+      } finally { setIsUploading(false); }
     } else {
       if (!selectedFile) return;
       setIsUploading(true);
       try {
         const fileToUpload = await compressImageFile(selectedFile);
         const uploadedUrl = await uploadImageFile(userId, fileToUpload, selectedFile.name);
-        onInsert(uploadedUrl, alt.trim() || selectedFile.name.replace(/\.[^/.]+$/, ""), align, size);
-        onClose();
+        const ok = await onInsert(uploadedUrl, alt.trim() || selectedFile.name.replace(/\.[^/.]+$/, ""), align, size);
+        if (ok !== false) onClose();
+        else setUploadError('The image could not be inserted. It has not been added to the note — see the message above and try again.');
       } catch (err: any) {
         setUploadError(err?.message || "Failed to upload image. Please try again.");
       } finally {
@@ -4611,13 +4618,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     base: pendingContentRef.current,
     ...getEditorSelection(),
   });
-  const insertForSection = (anchor: InsertionAnchor, insertion: string) => {
+  const insertForSection = (anchor: InsertionAnchor, insertion: string): boolean => {
     if (!mountedRef.current) {
       onAsyncInsertion(note.id, anchor.sectionId, anchor.base, anchor.start, anchor.end, insertion);
-      return;
+      return true;
     }
     const index = sectionsRef.current.findIndex(section => section.id === anchor.sectionId);
-    if (index < 0) return; // A section deleted while an upload was in flight stays deleted.
+    if (index < 0) return false; // A section deleted while an upload was in flight stays deleted.
     const current = sectionsRef.current[index].content;
     const content = insertAtSelection(current, anchor.base, anchor.start, anchor.end, insertion);
     pushHistoryImmediate(current, anchor.start);
@@ -4627,6 +4634,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
       setSections(sectionsRef.current);
     }
     flushPendingContent();
+    return true;
   };
   const handlePasteIntercept = async (event: ClipboardEvent) => {
     const file = Array.from(event.clipboardData.items).find(item => item.type.startsWith('image/'))?.getAsFile();
@@ -4915,18 +4923,21 @@ const NoteEditor: React.FC<NoteEditorProps> = ({
     const extracted = extractYouTubeId(url);
     if (!extracted) return;
     const standardUrl = `https://www.youtube.com/watch?v=${extracted.videoId}${extracted.startTime ? `&t=${extracted.startTime}s` : ''}`;
-    insertForSection(captureInsertion(), `\n[youtube](${standardUrl}) @@${align}:${size}@@\n`);
-    setIsYouTubeModalOpen(false);
+    if (insertForSection(captureInsertion(), `\n[youtube](${standardUrl}) @@${align}:${size}@@\n`)) setIsYouTubeModalOpen(false);
+    else showToast?.('That section no longer exists, so the video was not inserted.', 'error');
   };
 
-  const handleInsertImage = async (imageUrl: string, alt: string, align: 'left' | 'center' | 'right', size: 'small' | 'medium' | 'large' | 'full') => {
+  const handleInsertImage = async (imageUrl: string, alt: string, align: 'left' | 'center' | 'right', size: 'small' | 'medium' | 'large' | 'full'): Promise<boolean> => {
     const anchor = captureInsertion();
     flushPendingContent();
     try {
       const reference = await registerLocalImage(imageUrl, alt);
-      insertForSection(anchor, `\n![${alt.replace(/[\[\]\r\n]/g, ' ')}](${reference}) @@${align}:${size}@@\n`);
-      setIsImageModalOpen(false);
-    } catch (error: any) { showToast?.('Image could not be saved: ' + error.message, 'error'); }
+      if (!insertForSection(anchor, `\n![${alt.replace(/[\[\]\r\n]/g, ' ')}](${reference}) @@${align}:${size}@@\n`)) {
+        showToast?.('That section no longer exists, so the image was not inserted. Your photo is saved in the media vault.', 'error');
+        return false;
+      }
+      return true;
+    } catch (error: any) { showToast?.('Image could not be saved: ' + error.message, 'error'); return false; }
   };
 
   const handleAddSection = () => {
